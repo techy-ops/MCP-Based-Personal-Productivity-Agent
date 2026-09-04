@@ -175,10 +175,42 @@ create_note(title="Python notes", content="Type hints and service-based design h
 search_notes("python")
 ```
 
+## MCP Integration
+
+Phase 2.1 introduces a lightweight MCP layer for the Task domain. The purpose of this layer is to expose the existing task management functionality as standardized MCP tools without duplicating business logic or bypassing the Phase 1 service layer.
+
+The architecture remains intentionally thin:
+
+MCP Tool
+    ↓
+Task Service
+    ↓
+Database
+
+This allows a future AI agent or MCP client to discover and call productivity tools in a structured way, while the business rules continue to live in the proven Phase 1 services.
+
+The Task MCP server exposes these tools:
+
+- create_task
+- get_task
+- list_tasks
+- update_task
+- complete_task
+- delete_task
+
+Local startup command:
+
+```powershell
+python -m mcp_servers.task_server
+```
+
+This starts the FastMCP task server over stdio so it can be connected by an MCP client in later phases.
+
 ## Current limitations
 
 - No AI or LLM integration
-- No MCP server yet
+- No Calendar MCP server yet
+- No Notes MCP server yet
 - No Streamlit frontend
 - No authentication or user accounts
 - No external productivity APIs
