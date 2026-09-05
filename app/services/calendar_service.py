@@ -132,6 +132,8 @@ def update_event(event_id: int, **kwargs) -> CalendarEvent:
     except ValueError:
         session.rollback()
         raise
+    except NotFoundError:
+        raise
     except ValidationError:
         raise
     except Exception as exc:  # pragma: no cover - fallback guard

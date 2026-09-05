@@ -43,7 +43,7 @@ async def test_calendar_mcp_server_imports_and_initializes(calendar_mcp_server):
 async def test_calendar_mcp_server_registers_expected_tools(calendar_mcp_server):
     tools = await calendar_mcp_server.list_tools()
     names = {tool.name for tool in tools}
-    assert {"create_event", "get_event", "list_events", "update_event", "delete_event"}.issubset(names)
+    assert names == {"create_event", "get_event", "list_events", "update_event", "delete_event"}
 
 
 @pytest.mark.asyncio
@@ -171,6 +171,20 @@ async def test_list_events_tool_with_date_range_filter(calendar_mcp_server):
     assert payload["success"] is True
     assert all(item["title"] == "Day A event" for item in payload["data"])
 
+@pytest.mark.asyncio
+async def test_list_events_tool_empty_result(calendar_mcp_server):
+    payload = await invoke_tool(
+        calendar_mcp_server,
+        "list_events",
+        start_date="2026-09-20T00:00:00",
+        end_date="2026-09-20T23:59:59",
+    )
+    assert payload == {
+        "success": True,
+        "data": [],
+        "message": "Calendar events retrieved successfully",
+    }
+
 
 @pytest.mark.asyncio
 async def test_update_event_tool_success(calendar_mcp_server):
@@ -218,6 +232,25 @@ async def test_update_event_conflict_detection(calendar_mcp_server):
     assert payload["success"] is False
     assert "conflict" in payload["error"].lower()
 
+@pytest.mark.asyncio
+async def test_update_event_missing_event(calendar_mcp_server):
+    payload = await invoke_tool(calendar_mcp_server, "update_event", event_id=999, title="Missing")
+    assert payload["success"] is False
+    assert "not found" in payload["error"].lower()
+
+@pytest.mark.asyncio
+async def test_update_event_invalid_input_handling(calendar_mcp_server):
+    created = await invoke_tool(
+        calendar_mcp_server,
+        "create_event",
+        title="Valid event",
+        start_time="2026-09-10T14:00:00",
+        end_time="2026-09-10T15:00:00",
+    )
+    payload = await invoke_tool(calendar_mcp_server, "update_event", event_id=created["data"]["id"], title="")
+    assert payload["success"] is False
+    assert "title" in payload["error"].lower()
+
 
 @pytest.mark.asyncio
 async def test_delete_event_tool_success(calendar_mcp_server):
@@ -231,6 +264,9 @@ async def test_delete_event_tool_success(calendar_mcp_server):
     payload = await invoke_tool(calendar_mcp_server, "delete_event", event_id=created["data"]["id"])
     assert payload["success"] is True
     assert payload["data"] is True
+
+    missing = await invoke_tool(calendar_mcp_server, "get_event", event_id=created["data"]["id"])
+    assert missing["success"] is False
 
 
 @pytest.mark.asyncio
