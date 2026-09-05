@@ -107,6 +107,8 @@ def update_task(task_id: int, **kwargs) -> Task:
         return task
     except ValidationError:
         raise
+    except NotFoundError:
+        raise
     except Exception as exc:  # pragma: no cover - fallback guard
         session.rollback()
         raise DatabaseError("Unable to update task.") from exc
