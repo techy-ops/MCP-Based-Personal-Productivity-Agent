@@ -271,21 +271,28 @@ python -m mcp_servers.notes_server
 
 All Notes MCP tools preserve the existing service-layer validation, persistence, missing-note handling, and case-insensitive title/content search behavior.
 
-## Unified MCP Server Foundation (Phase 2.4.1)
+## Unified MCP Server Integration (Phase 2.4.2)
 
-The unified MCP server foundation is complete. During this sub-phase, it exposes the six existing Task MCP tools through one FastMCP application while preserving the individual Task, Calendar, and Notes servers.
+The unified MCP server now exposes the existing Task, Calendar, and Notes MCP tools through one FastMCP application while preserving the individual domain servers.
 
 Architecture:
 
 Unified MCP Server
        ↓
-    Task Tools
-       ↓
-   Task Service
-       ↓
-    Database
+    ┌──────────────┼──────────────┐
+    ↓              ↓              ↓
+Task Tools    Calendar Tools    Notes Tools
+    │              │              │
+    ↓              ↓              ↓
+Task Service  Calendar Service  Notes Service
+    │              │              │
+    └──────────────┼──────────────┘
+                   ↓
+                Database
 
-The Task-only unified server currently exposes:
+The unified server exposes 17 tools:
+
+Task tools:
 
 - create_task
 - get_task
@@ -294,13 +301,30 @@ The Task-only unified server currently exposes:
 - complete_task
 - delete_task
 
+Calendar tools:
+
+- create_event
+- get_event
+- list_events
+- update_event
+- delete_event
+
+Notes tools:
+
+- create_note
+- get_note
+- list_notes
+- update_note
+- delete_note
+- search_notes
+
 Local startup command:
 
 ```powershell
 python -m mcp_servers.unified_server
 ```
 
-Calendar and Notes tools are intentionally deferred to Phase 2.4.2. The final unified server will integrate those domains in a later sub-phase.
+The individual Task, Calendar, and Notes MCP servers remain available. The unified server is an additional consolidated interface, and all three domains continue to delegate to their existing service layers. AI and LLM integration has not been implemented.
 
 ## Current limitations
 
@@ -318,11 +342,13 @@ Calendar and Notes tools are intentionally deferred to Phase 2.4.2. The final un
     - 2.2 Calendar MCP Server — complete
     - 2.3 Notes MCP Server — complete
     - 2.4.1 Unified MCP Server Foundation — complete
-    - 2.4.2 Calendar + Notes Integration — upcoming
+    - 2.4.2 Calendar + Notes Integration — complete
+    - 2.4.3 Final Integration + Verification — upcoming
+- Phase 2.5: MCP Client — later
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, and Phase 2.4.1 are complete. Calendar and Notes integration into the unified server, later agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, Phase 2.4.1, and Phase 2.4.2 are complete. Phase 2.4.3 final verification, MCP client work, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
