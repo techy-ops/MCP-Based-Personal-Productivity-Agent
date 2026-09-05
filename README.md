@@ -242,23 +242,26 @@ The MCP layer preserves the existing calendar service behavior, including:
 - event updates
 - event deletion
 
-## Notes MCP Foundation (Phase 2.3.1)
+## Notes MCP Integration (Phase 2.3)
 
-The notes domain is partially exposed through a dedicated FastMCP server that delegates to the existing Phase 1 notes service.
+The notes domain is exposed through a dedicated FastMCP server that delegates all operations to the existing Phase 1 notes service.
 
 Architecture:
 
-Notes MCP Tools
+Notes MCP Tool
     ↓
 Notes Service
     ↓
 Database
 
-The Notes MCP server currently exposes:
+The Notes MCP server exposes:
 
 - create_note
 - get_note
 - list_notes
+- update_note
+- delete_note
+- search_notes
 
 Local startup command:
 
@@ -266,16 +269,11 @@ Local startup command:
 python -m mcp_servers.notes_server
 ```
 
-The remaining Notes MCP tools are planned for Phase 2.3.2:
-
-- update_note
-- delete_note
-- search_notes
+All Notes MCP tools preserve the existing service-layer validation, persistence, missing-note handling, and case-insensitive title/content search behavior.
 
 ## Current limitations
 
 - No AI or LLM integration
-- Notes MCP currently exposes create, get, and list operations; update, delete, and search remain for Phase 2.3.2
 - No Streamlit frontend
 - No authentication or user accounts
 - No external productivity APIs
@@ -287,12 +285,12 @@ The remaining Notes MCP tools are planned for Phase 2.3.2:
 - Phase 2:
     - 2.1 Task MCP Server — complete
     - 2.2 Calendar MCP Server — complete
-    - 2.3.1 Notes MCP Foundation — complete
-    - 2.3.2 Remaining Notes MCP Tools — upcoming
+    - 2.3 Notes MCP Server — complete
+    - 2.4 Unified MCP Architecture — upcoming
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, and Phase 2.3.1 are complete. Remaining Notes MCP tools, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, Phase 2.2, and Phase 2.3 are complete. Unified MCP architecture, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
