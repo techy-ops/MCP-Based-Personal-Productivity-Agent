@@ -320,3 +320,89 @@ async def test_unified_calendar_and_notes_schemas(unified_mcp_server):
     assert "note_id" in tool_map["update_note"].inputSchema["properties"]
     assert "note_id" in tool_map["delete_note"].inputSchema["properties"]
     assert "query" in tool_map["search_notes"].inputSchema["properties"]
+
+
+@pytest.mark.asyncio
+async def test_unified_empty_data_behavior(unified_mcp_server):
+    tasks = await invoke_tool(unified_mcp_server, "list_tasks")
+    events = await invoke_tool(unified_mcp_server, "list_events")
+    notes = await invoke_tool(unified_mcp_server, "list_notes")
+    search = await invoke_tool(unified_mcp_server, "search_notes", query="no matches")
+
+    assert tasks["success"] is True and tasks["data"] == []
+    assert events["success"] is True and events["data"] == []
+    assert notes["success"] is True and notes["data"] == []
+    assert search["success"] is True and search["data"] == []
+
+
+@pytest.mark.asyncio
+async def test_unified_calendar_conflict_error_preserves_service_behavior(unified_mcp_server):
+    first = await invoke_tool(
+        unified_mcp_server,
+        "create_event",
+        title="Existing event",
+        start_time="2026-09-24T09:00:00",
+        end_time="2026-09-24T10:00:00",
+    )
+    assert first["success"] is True
+
+    conflict = await invoke_tool(
+        unified_mcp_server,
+        "create_event",
+        title="Overlapping event",
+        start_time="2026-09-24T09:30:00",
+        end_time="2026-09-24T10:30:00",
+    )
+    assert conflict["success"] is False
+    assert "conflict" in conflict["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_unified_response_contracts(unified_mcp_server):
+    task = await invoke_tool(unified_mcp_server, "create_task", title="Response task")
+    event = await invoke_tool(
+        unified_mcp_server,
+        "create_event",
+        title="Response event",
+        start_time="2026-09-25T09:00:00",
+        end_time="2026-09-25T10:00:00",
+    )
+    note = await invoke_tool(unified_mcp_server, "create_note", title="Response note", content="Response content")
+
+    for payload in [task, event, note]:
+        assert payload["success"] is True
+        assert set(payload) == {"success", "data", "message"}
+        assert isinstance(payload["data"], dict)
+        assert isinstance(payload["message"], str)
+
+    failures = [
+        await invoke_tool(unified_mcp_server, "get_task", task_id=999),
+        await invoke_tool(unified_mcp_server, "get_event", event_id=999),
+        await invoke_tool(unified_mcp_server, "get_note", note_id=999),
+    ]
+    for payload in failures:
+        assert payload["success"] is False
+        assert set(payload) == {"success", "error"}
+        assert isinstance(payload["error"], str)
+
+
+@pytest.mark.asyncio
+async def test_unified_repeated_reads_are_stable(unified_mcp_server):
+    task = await invoke_tool(unified_mcp_server, "create_task", title="Repeated task")
+    event = await invoke_tool(
+        unified_mcp_server,
+        "create_event",
+        title="Repeated event",
+        start_time="2026-09-26T09:00:00",
+        end_time="2026-09-26T10:00:00",
+    )
+    note = await invoke_tool(unified_mcp_server, "create_note", title="Repeated note", content="Repeated content")
+
+    for _ in range(5):
+        assert (await invoke_tool(unified_mcp_server, "get_task", task_id=task["data"]["id"]))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "list_tasks"))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "get_event", event_id=event["data"]["id"]))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "list_events"))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "get_note", note_id=note["data"]["id"]))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "list_notes"))["success"] is True
+        assert (await invoke_tool(unified_mcp_server, "search_notes", query="repeated"))["success"] is True
