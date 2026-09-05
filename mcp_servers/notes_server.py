@@ -93,5 +93,75 @@ def list_notes() -> dict[str, Any]:
         return _error_response(f"Unable to list notes: {exc}")
 
 
+@server.tool(
+    name="update_note",
+    description=(
+        "Update an existing note by ID. Provide a new title, content, or both; the Notes service validates supplied fields."
+    ),
+)
+def update_note(
+    note_id: int,
+    title: str | None = None,
+    content: str | None = None,
+) -> dict[str, Any]:
+    """Update a note by delegating to the existing Phase 1 note service."""
+    try:
+        validated_id = _validate_note_id(note_id)
+        payload: dict[str, Any] = {}
+        if title is not None:
+            payload["title"] = title
+        if content is not None:
+            payload["content"] = content
+        note = note_service.update_note(validated_id, **payload)
+        return _success_response(_serialize_note(note), "Note updated successfully")
+    except NotFoundError as exc:
+        return _error_response(str(exc))
+    except (ValidationError, ValueError, TypeError) as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to update note: {exc}")
+
+
+@server.tool(
+    name="delete_note",
+    description="Delete an existing note permanently by its note ID.",
+)
+def delete_note(note_id: int) -> dict[str, Any]:
+    """Delete a note through the existing Phase 1 note service."""
+    try:
+        validated_id = _validate_note_id(note_id)
+        deleted = note_service.delete_note(validated_id)
+        return _success_response(deleted, "Note deleted successfully")
+    except NotFoundError as exc:
+        return _error_response(str(exc))
+    except (ValidationError, ValueError, TypeError) as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to delete note: {exc}")
+
+
+@server.tool(
+    name="search_notes",
+    description=(
+        "Search notes by a non-empty query across note titles and content using the existing case-insensitive Notes service search."
+    ),
+)
+def search_notes(query: str) -> dict[str, Any]:
+    """Search notes by delegating to the existing Phase 1 note service."""
+    try:
+        notes = note_service.search_notes(query)
+        return _success_response([_serialize_note(note) for note in notes], "Notes search completed successfully")
+    except (ValidationError, ValueError, TypeError) as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to search notes: {exc}")
+
+
 if __name__ == "__main__":
     server.run(transport="stdio")

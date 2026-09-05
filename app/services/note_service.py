@@ -78,6 +78,8 @@ def update_note(note_id: int, **kwargs) -> Note:
         return note
     except ValidationError:
         raise
+    except NotFoundError:
+        raise
     except Exception as exc:  # pragma: no cover - fallback guard
         session.rollback()
         raise DatabaseError("Unable to update note.") from exc
