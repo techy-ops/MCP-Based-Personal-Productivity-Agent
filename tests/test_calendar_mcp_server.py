@@ -43,7 +43,7 @@ async def test_calendar_mcp_server_imports_and_initializes(calendar_mcp_server):
 async def test_calendar_mcp_server_registers_expected_tools(calendar_mcp_server):
     tools = await calendar_mcp_server.list_tools()
     names = {tool.name for tool in tools}
-MCP    assert {"create_event", "get_event", "list_events", "update_event", "delete_event"}.issubset(names)
+    assert {"create_event", "get_event", "list_events", "update_event", "delete_event"}.issubset(names)
 
 
 @pytest.mark.asyncio

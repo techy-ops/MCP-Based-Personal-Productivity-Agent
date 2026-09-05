@@ -150,23 +150,22 @@ def update_event(
     location: str | None = None,
 ) -> dict[str, Any]:
     """Update a calendar event using the Phase 1 service implementation."""
-    payload: dict[str, Any] = {}
-    if title is not None:
-        normalized_title = str(title).strip()
-        if not normalized_title:
-            raise ValidationError("title cannot be empty")
-        payload["title"] = normalized_title
-    if description is not None:
-        payload["description"] = description
-    if start_time is not None:
-        payload["start_time"] = _coerce_datetime(start_time)
-    if end_time is not None:
-        payload["end_time"] = _coerce_datetime(end_time)
-    if location is not None:
-        payload["location"] = location
-
     try:
         validated_id = _validate_event_id(event_id)
+        payload: dict[str, Any] = {}
+        if title is not None:
+            normalized_title = str(title).strip()
+            if not normalized_title:
+                raise ValidationError("title cannot be empty")
+            payload["title"] = normalized_title
+        if description is not None:
+            payload["description"] = description
+        if start_time is not None:
+            payload["start_time"] = _coerce_datetime(start_time)
+        if end_time is not None:
+            payload["end_time"] = _coerce_datetime(end_time)
+        if location is not None:
+            payload["location"] = location
         event = calendar_service.update_event(validated_id, **payload)
         return _success_response(_serialize_event(event), "Calendar event updated successfully")
     except NotFoundError as exc:
@@ -192,6 +191,8 @@ def delete_event(event_id: int) -> dict[str, Any]:
         deleted = calendar_service.delete_event(validated_id)
         return _success_response(deleted, "Calendar event deleted successfully")
     except NotFoundError as exc:
+        return _error_response(str(exc))
+    except ValidationError as exc:
         return _error_response(str(exc))
     except DatabaseError as exc:
         return _error_response(str(exc))
