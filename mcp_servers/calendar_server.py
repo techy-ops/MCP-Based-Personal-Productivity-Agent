@@ -111,5 +111,93 @@ def get_event(event_id: int) -> dict[str, Any]:
         return _error_response(f"Unable to retrieve calendar event: {exc}")
 
 
+@server.tool(
+    name="list_events",
+    description=(
+        "Retrieve calendar events and optionally filter by the available date range using the existing calendar service logic. "
+        "Use this to inspect events for a specific day or time window."
+    ),
+)
+def list_events(start_date: str | datetime | None = None, end_date: str | datetime | None = None) -> dict[str, Any]:
+    """List calendar events through the Phase 1 service-layer filtering logic."""
+    try:
+        events = calendar_service.list_events(
+            start_date=_coerce_datetime(start_date),
+            end_date=_coerce_datetime(end_date),
+        )
+        return _success_response([_serialize_event(event) for event in events], "Calendar events retrieved successfully")
+    except (ValidationError, ValueError, TypeError) as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to list calendar events: {exc}")
+
+
+@server.tool(
+    name="update_event",
+    description=(
+        "Update an existing calendar event by ID. Provide any supported event fields such as title, description, start_time, end_time, or location. "
+        "The existing calendar service continues to enforce validation and overlap conflict checks."
+    ),
+)
+def update_event(
+    event_id: int,
+    title: str | None = None,
+    description: str | None = None,
+    start_time: str | datetime | None = None,
+    end_time: str | datetime | None = None,
+    location: str | None = None,
+) -> dict[str, Any]:
+    """Update a calendar event using the Phase 1 service implementation."""
+    payload: dict[str, Any] = {}
+    if title is not None:
+        normalized_title = str(title).strip()
+        if not normalized_title:
+            raise ValidationError("title cannot be empty")
+        payload["title"] = normalized_title
+    if description is not None:
+        payload["description"] = description
+    if start_time is not None:
+        payload["start_time"] = _coerce_datetime(start_time)
+    if end_time is not None:
+        payload["end_time"] = _coerce_datetime(end_time)
+    if location is not None:
+        payload["location"] = location
+
+    try:
+        validated_id = _validate_event_id(event_id)
+        event = calendar_service.update_event(validated_id, **payload)
+        return _success_response(_serialize_event(event), "Calendar event updated successfully")
+    except NotFoundError as exc:
+        return _error_response(str(exc))
+    except (ValidationError, ValueError, TypeError) as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to update calendar event: {exc}")
+
+
+@server.tool(
+    name="delete_event",
+    description=(
+        "Delete a calendar event permanently by its event ID. Use this when an appointment or meeting is no longer needed."
+    ),
+)
+def delete_event(event_id: int) -> dict[str, Any]:
+    """Delete a calendar event through the Phase 1 service layer."""
+    try:
+        validated_id = _validate_event_id(event_id)
+        deleted = calendar_service.delete_event(validated_id)
+        return _success_response(deleted, "Calendar event deleted successfully")
+    except NotFoundError as exc:
+        return _error_response(str(exc))
+    except DatabaseError as exc:
+        return _error_response(str(exc))
+    except Exception as exc:  # pragma: no cover - safety fallback
+        return _error_response(f"Unable to delete calendar event: {exc}")
+
+
 if __name__ == "__main__":
     server.run(transport="stdio")
