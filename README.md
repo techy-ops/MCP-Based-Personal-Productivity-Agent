@@ -271,6 +271,37 @@ python -m mcp_servers.notes_server
 
 All Notes MCP tools preserve the existing service-layer validation, persistence, missing-note handling, and case-insensitive title/content search behavior.
 
+## Unified MCP Server Foundation (Phase 2.4.1)
+
+The unified MCP server foundation is complete. During this sub-phase, it exposes the six existing Task MCP tools through one FastMCP application while preserving the individual Task, Calendar, and Notes servers.
+
+Architecture:
+
+Unified MCP Server
+       ↓
+    Task Tools
+       ↓
+   Task Service
+       ↓
+    Database
+
+The Task-only unified server currently exposes:
+
+- create_task
+- get_task
+- list_tasks
+- update_task
+- complete_task
+- delete_task
+
+Local startup command:
+
+```powershell
+python -m mcp_servers.unified_server
+```
+
+Calendar and Notes tools are intentionally deferred to Phase 2.4.2. The final unified server will integrate those domains in a later sub-phase.
+
 ## Current limitations
 
 - No AI or LLM integration
@@ -286,11 +317,12 @@ All Notes MCP tools preserve the existing service-layer validation, persistence,
     - 2.1 Task MCP Server — complete
     - 2.2 Calendar MCP Server — complete
     - 2.3 Notes MCP Server — complete
-    - 2.4 Unified MCP Architecture — upcoming
+    - 2.4.1 Unified MCP Server Foundation — complete
+    - 2.4.2 Calendar + Notes Integration — upcoming
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, and Phase 2.3 are complete. Unified MCP architecture, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, and Phase 2.4.1 are complete. Calendar and Notes integration into the unified server, later agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
