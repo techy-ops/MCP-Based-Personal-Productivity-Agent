@@ -271,9 +271,9 @@ python -m mcp_servers.notes_server
 
 All Notes MCP tools preserve the existing service-layer validation, persistence, missing-note handling, and case-insensitive title/content search behavior.
 
-## Unified MCP Server Integration (Phase 2.4.2)
+## Unified MCP Architecture (Phase 2.4)
 
-The unified MCP server now exposes the existing Task, Calendar, and Notes MCP tools through one FastMCP application while preserving the individual domain servers.
+The Unified MCP architecture is complete. The unified server exposes the existing Task, Calendar, and Notes MCP tools through one FastMCP application while preserving the individual domain servers.
 
 Architecture:
 
@@ -290,7 +290,7 @@ Task Service  Calendar Service  Notes Service
                    ↓
                 Database
 
-The unified server exposes 17 tools:
+The unified server exposes 17 tools in total:
 
 Task tools:
 
@@ -326,6 +326,12 @@ python -m mcp_servers.unified_server
 
 The individual Task, Calendar, and Notes MCP servers remain available. The unified server is an additional consolidated interface, and all three domains continue to delegate to their existing service layers. AI and LLM integration has not been implemented.
 
+Phase 2.4 sub-phases:
+
+- 2.4.1 Unified Server Foundation — complete
+- 2.4.2 Calendar + Notes Integration — complete
+- 2.4.3 Final Integration + Verification — complete
+
 ## Current limitations
 
 - No AI or LLM integration
@@ -341,14 +347,15 @@ The individual Task, Calendar, and Notes MCP servers remain available. The unifi
     - 2.1 Task MCP Server — complete
     - 2.2 Calendar MCP Server — complete
     - 2.3 Notes MCP Server — complete
-    - 2.4.1 Unified MCP Server Foundation — complete
-    - 2.4.2 Calendar + Notes Integration — complete
-    - 2.4.3 Final Integration + Verification — upcoming
-- Phase 2.5: MCP Client — later
+    - 2.4 Unified MCP Architecture — complete
+      - 2.4.1 Unified Server Foundation — complete
+      - 2.4.2 Calendar + Notes Integration — complete
+      - 2.4.3 Final Integration + Verification — complete
+- Phase 2.5: MCP Client — upcoming
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, Phase 2.4.1, and Phase 2.4.2 are complete. Phase 2.4.3 final verification, MCP client work, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, and Phase 2.4 are complete. Phase 2.5 MCP client work, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
