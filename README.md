@@ -206,13 +206,13 @@ python -m mcp_servers.task_server
 
 This starts the FastMCP task server over stdio so it can be connected by an MCP client in later phases.
 
-## Calendar MCP expansion (Phase 2.2.1)
+## Calendar MCP Integration (Phase 2.2)
 
 The calendar domain is now exposed through a dedicated FastMCP server that stays thin and delegates to the existing Phase 1 calendar business logic.
 
 Architecture:
 
-Calendar MCP Tool
+Calendar MCP Tools
     ↓
 Calendar Service
     ↓
@@ -220,10 +220,13 @@ Database
 
 This preserves the existing calendar validation and overlap conflict detection while exposing the tools needed by an MCP-capable client.
 
-Current Calendar MCP tools:
+The Calendar MCP server exposes these tools:
 
 - create_event
 - get_event
+- list_events
+- update_event
+- delete_event
 
 Local startup command:
 
@@ -231,7 +234,13 @@ Local startup command:
 python -m mcp_servers.calendar_server
 ```
 
-The calendar MCP server intentionally does not add list, update, or delete event tools yet; those remain for the next calendar MCP sub-phase.
+The MCP layer preserves the existing calendar service behavior, including:
+
+- input and time-range validation
+- date-range filtering
+- overlap conflict detection during creation and updates
+- event updates
+- event deletion
 
 ## Current limitations
 
@@ -245,11 +254,14 @@ The calendar MCP server intentionally does not add list, update, or delete event
 
 ## Future phases
 
-- Phase 2: MCP tool servers exposing the backend service layer
+- Phase 2:
+    - 2.1 Task MCP Server — complete
+    - 2.2 Calendar MCP Server — complete
+    - 2.3 Notes MCP Server — upcoming
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-This project is intentionally not implementing FastMCP, LangGraph, AI features, or frontend interfaces in Phase 1. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, and Phase 2.2 are complete. Notes MCP, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
