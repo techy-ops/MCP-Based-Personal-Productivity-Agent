@@ -206,10 +206,36 @@ python -m mcp_servers.task_server
 
 This starts the FastMCP task server over stdio so it can be connected by an MCP client in later phases.
 
+## Calendar MCP expansion (Phase 2.2.1)
+
+The calendar domain is now exposed through a dedicated FastMCP server that stays thin and delegates to the existing Phase 1 calendar business logic.
+
+Architecture:
+
+Calendar MCP Tool
+    ↓
+Calendar Service
+    ↓
+Database
+
+This preserves the existing calendar validation and overlap conflict detection while exposing the tools needed by an MCP-capable client.
+
+Current Calendar MCP tools:
+
+- create_event
+- get_event
+
+Local startup command:
+
+```powershell
+python -m mcp_servers.calendar_server
+```
+
+The calendar MCP server intentionally does not add list, update, or delete event tools yet; those remain for the next calendar MCP sub-phase.
+
 ## Current limitations
 
 - No AI or LLM integration
-- No Calendar MCP server yet
 - No Notes MCP server yet
 - No Streamlit frontend
 - No authentication or user accounts
