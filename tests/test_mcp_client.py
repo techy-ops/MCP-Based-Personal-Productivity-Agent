@@ -23,9 +23,10 @@ EXPECTED_TOOL_NAMES = {
 
 
 @pytest.fixture
-def client_factory():
+def client_factory(tmp_path):
     def _factory(**kwargs):
-        env = {**os.environ, "DATABASE_URL": "sqlite:///:memory:"}
+        db_path = tmp_path / "mcp_client_test.db"
+        env = {**os.environ, "DATABASE_URL": f"sqlite:///{db_path.as_posix()}"}
         return MCPClient(
             server_path=BASE_DIR / "mcp_servers" / "unified_server.py",
             env=env,
