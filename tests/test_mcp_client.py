@@ -1,11 +1,19 @@
 import os
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.config import BASE_DIR
 from mcp_client import MCPClient
-from mcp_client.exceptions import MCPConnectionError
+from mcp_client.exceptions import MCPClientStateError, MCPConnectionError, MCPToolDiscoveryError
+
+
+EXPECTED_TOOL_NAMES = {
+    "create_task", "get_task", "list_tasks", "update_task", "complete_task", "delete_task",
+    "create_event", "get_event", "list_events", "update_event", "delete_event",
+    "create_note", "get_note", "list_notes", "update_note", "delete_note", "search_notes",
+}
 
 
 @pytest.fixture
@@ -88,3 +96,87 @@ async def test_context_manager_lifecycle(client_factory):
         assert client.session is not None
     assert client.is_connected is False
     assert client.session is None
+
+
+@pytest.mark.asyncio
+async def test_list_tools_requires_connection(client_factory):
+    with pytest.raises(MCPClientStateError, match="Connect to the MCP server"):
+        await client_factory().list_tools()
+
+
+@pytest.mark.asyncio
+async def test_successful_tool_discovery(client_factory):
+    client = client_factory()
+    await client.connect()
+    tools = await client.list_tools()
+    assert tools
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_discovered_tools_match_unified_server_contract(client_factory):
+    client = client_factory()
+    await client.connect()
+    tools = await client.list_tools()
+    names = [tool.name for tool in tools]
+    assert len(tools) == 17
+    assert set(names) == EXPECTED_TOOL_NAMES
+    assert len(names) == len(set(names))
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_discovered_tool_metadata_includes_input_schemas(client_factory):
+    client = client_factory()
+    await client.connect()
+    tools_by_name = {tool.name: tool for tool in await client.list_tools()}
+    for name in ("create_task", "create_event", "create_note"):
+        tool = tools_by_name[name]
+        assert isinstance(tool.name, str)
+        assert hasattr(tool, "description")
+        assert isinstance(tool.input_schema, dict)
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_repeated_tool_discovery_uses_active_session(client_factory):
+    client = client_factory()
+    await client.connect()
+    tools1 = await client.list_tools()
+    tools2 = await client.list_tools()
+    assert {tool.name for tool in tools1} == {tool.name for tool in tools2}
+    assert len(tools1) == len(tools2)
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_tool_discovery_after_reconnect(client_factory):
+    client = client_factory()
+    await client.connect()
+    first_names = {tool.name for tool in await client.list_tools()}
+    await client.close()
+    await client.connect()
+    second_names = {tool.name for tool in await client.list_tools()}
+    await client.close()
+    assert first_names == second_names == EXPECTED_TOOL_NAMES
+
+
+@pytest.mark.asyncio
+async def test_close_after_tool_discovery(client_factory):
+    client = client_factory()
+    await client.connect()
+    await client.list_tools()
+    await client.close()
+    assert client.is_connected is False
+
+
+@pytest.mark.asyncio
+async def test_tool_discovery_failure_raises_client_exception(client_factory):
+    client = client_factory()
+    await client.connect()
+    assert client.session is not None
+    client.session.list_tools = AsyncMock(side_effect=RuntimeError("protocol failure"))
+    with pytest.raises(MCPToolDiscoveryError, match="Unable to discover MCP server tools") as error:
+        await client.list_tools()
+    assert isinstance(error.value.__cause__, RuntimeError)
+    await client.close()

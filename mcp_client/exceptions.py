@@ -8,3 +8,7 @@ class MCPConnectionError(MCPClientError):
 
 class MCPClientStateError(MCPClientError):
     """Raised when a client lifecycle method is used in an invalid state."""
+
+
+class MCPToolDiscoveryError(MCPClientError):
+    """Raised when the MCP server cannot provide its tool metadata."""

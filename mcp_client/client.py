@@ -10,14 +10,14 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from app.config import BASE_DIR
 
-from .exceptions import MCPClientStateError, MCPConnectionError
+from .exceptions import MCPClientStateError, MCPConnectionError, MCPToolDiscoveryError
 
 
 class MCPClient:
-    """Minimal async client for the Unified MCP server lifecycle.
+    """Async client for Unified MCP server lifecycle and tool discovery.
 
     The client is intentionally scoped to protocol/session management only. Later
-    phases can build tool discovery and invocation on top of this foundation.
+    phases can build tool invocation on top of this foundation.
     """
 
     def __init__(
@@ -102,6 +102,23 @@ class MCPClient:
                 await transport_cm.__aexit__(None, None, None)
         except Exception:
             pass
+
+    async def list_tools(self) -> list[Any]:
+        """Return native MCP tool metadata discovered from the active session.
+
+        Each SDK tool object exposes its name, description, and input schema.
+        Metadata is retrieved through ``ClientSession.list_tools()``; no local
+        tool registry or server-module inspection is used.
+        """
+        if not self.is_connected or self.session is None:
+            raise MCPClientStateError("Connect to the MCP server before listing tools.")
+
+        try:
+            result = await self.session.list_tools()
+        except Exception as exc:
+            raise MCPToolDiscoveryError("Unable to discover MCP server tools.") from exc
+
+        return result.tools
 
     async def __aenter__(self) -> "MCPClient":
         await self.connect()
