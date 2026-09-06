@@ -199,15 +199,30 @@ The Unified MCP Server currently exposes 17 dynamically discovered tools:
 - Calendar: `create_event`, `get_event`, `list_events`, `update_event`, `delete_event`
 - Notes: `create_note`, `get_note`, `list_notes`, `update_note`, `delete_note`, `search_notes`
 
-Tool invocation is intentionally not implemented yet. The next phase is Phase 2.5.3 — Generic Tool Invocation & Error Handling.
+### 2.5.3 Generic Tool Invocation & Error Handling — COMPLETE
+
+The MCP client now implements a single generic async `call_tool(name, arguments)` pathway that reuses the active `ClientSession` and sends raw MCP protocol requests to the Unified MCP Server. The method validates the connection state, checks discovered tool names when available, passes argument dictionaries through without hard-coded domain routing, and preserves useful MCP result metadata while converting protocol or server-side failures into a client-level exception.
+
+This enables the same client method to invoke tools across all domains:
+
+```python
+await client.call_tool("create_task", {"title": "Finish assignment"})
+await client.call_tool("create_event", {"title": "Planning", "start_time": "2026-09-20T09:00:00", "end_time": "2026-09-20T10:00:00"})
+await client.call_tool("create_note", {"title": "Research", "content": "Take notes from the call."})
+```
+
+The generic invocation path uses the installed MCP SDK `ClientSession.call_tool()` directly, not custom per-tool wrappers. The client preserves the real MCP `CallToolResult` object and raises `MCPToolInvocationError` for invalid tool names, invalid argument shapes, or server-side execution failures while leaving business validation in the tools and service layer.
+
+This phase continues to enforce database isolation for live integration tests and keeps tool discovery dynamic rather than hard-coded.
 
 This phase intentionally does not implement:
-- tool invocation
-- `call_tool()` abstraction
-- dynamic tool routing
-- LangGraph, LLM, or frontend layers
+- LangGraph
+- LLM or agent reasoning layers
+- Streamlit frontend
+- autonomous planning or memory
+- new business logic or database redesign
 
-The next phase is Phase 2.5.3 — Generic Tool Invocation & Error Handling.
+The next phase is Phase 2.5.4 — Client Integration & Final Verification.
 
 ## Example operations
 
