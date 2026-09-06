@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -10,15 +11,16 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from app.config import BASE_DIR
 
-from .exceptions import MCPClientStateError, MCPConnectionError, MCPToolDiscoveryError
+from .exceptions import (
+    MCPClientStateError,
+    MCPConnectionError,
+    MCPToolDiscoveryError,
+    MCPToolInvocationError,
+)
 
 
 class MCPClient:
-    """Async client for Unified MCP server lifecycle and tool discovery.
-
-    The client is intentionally scoped to protocol/session management only. Later
-    phases can build tool invocation on top of this foundation.
-    """
+    """Async client for Unified MCP server lifecycle, discovery, and invocation."""
 
     def __init__(
         self,
@@ -47,6 +49,7 @@ class MCPClient:
         self.session: ClientSession | None = None
         self._transport_cm: Any | None = None
         self._session_cm: Any | None = None
+        self._known_tool_names: set[str] = set()
 
     @property
     def is_connected(self) -> bool:
@@ -74,6 +77,7 @@ class MCPClient:
             await self._session_cm.__aenter__()
             self.session = self._session_cm
             await self.session.initialize()
+            self._known_tool_names.clear()
             return self
         except Exception as exc:
             await self.close()
@@ -90,6 +94,7 @@ class MCPClient:
         self._session_cm = None
         self.session = None
         self._transport_cm = None
+        self._known_tool_names.clear()
 
         try:
             if session_cm is not None:
@@ -104,12 +109,7 @@ class MCPClient:
             pass
 
     async def list_tools(self) -> list[Any]:
-        """Return native MCP tool metadata discovered from the active session.
-
-        Each SDK tool object exposes its name, description, and input schema.
-        Metadata is retrieved through ``ClientSession.list_tools()``; no local
-        tool registry or server-module inspection is used.
-        """
+        """Return native MCP tool metadata discovered from the active session."""
         if not self.is_connected or self.session is None:
             raise MCPClientStateError("Connect to the MCP server before listing tools.")
 
@@ -118,7 +118,98 @@ class MCPClient:
         except Exception as exc:
             raise MCPToolDiscoveryError("Unable to discover MCP server tools.") from exc
 
-        return result.tools
+        tool_metadata = result.tools
+        self._known_tool_names = {tool.name for tool in tool_metadata}
+        return tool_metadata
+
+    @staticmethod
+    def _extract_text_content(result: Any) -> str | None:
+        if result is None:
+            return None
+
+        if getattr(result, "structuredContent", None) is not None:
+            structured = result.structuredContent
+            if isinstance(structured, dict):
+                if structured.get("success") is False:
+                    error = structured.get("error")
+                    if error:
+                        return str(error)
+                return json.dumps(structured)
+
+        content = getattr(result, "content", None)
+        if not content:
+            return None
+
+        for item in content:
+            text = getattr(item, "text", None)
+            if text:
+                return str(text)
+        return None
+
+    @classmethod
+    def _coerce_tool_error_message(cls, result: Any) -> str:
+        text = cls._extract_text_content(result)
+        if text is None:
+            return "MCP tool invocation failed."
+
+        try:
+            payload = json.loads(text)
+        except (TypeError, ValueError):
+            return text
+
+        if isinstance(payload, dict):
+            if payload.get("success") is False:
+                message = payload.get("error") or payload.get("message")
+                if message:
+                    return str(message)
+            if payload.get("error"):
+                return str(payload["error"])
+
+        return text
+
+    async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
+        """Invoke any MCP tool discovered from the active server session.
+
+        The client validates the connection and optional discovered tool names, then
+        forwards the request to the active ``ClientSession`` without hard-coded domain
+        routing.
+        """
+        if not self.is_connected or self.session is None:
+            raise MCPClientStateError("Connect to the MCP server before invoking a tool.")
+
+        if self._known_tool_names and name not in self._known_tool_names:
+            raise MCPToolInvocationError(f"Tool '{name}' is not available on the connected MCP server.")
+
+        payload = arguments if arguments is not None else {}
+        if not isinstance(payload, dict):
+            raise MCPToolInvocationError("Tool arguments must be provided as a dictionary.")
+
+        try:
+            result = await self.session.call_tool(name, payload)
+        except Exception as exc:
+            raise MCPToolInvocationError(f"MCP invocation failed for tool '{name}'.") from exc
+
+        if getattr(result, "isError", False):
+            message = self._coerce_tool_error_message(result)
+            raise MCPToolInvocationError(message, result=result)
+
+        if getattr(result, "structuredContent", None) is not None:
+            structured = result.structuredContent
+            if isinstance(structured, dict) and structured.get("success") is False:
+                error_message = structured.get("error") or structured.get("message") or "Tool execution failed."
+                raise MCPToolInvocationError(str(error_message), result=result)
+
+        if getattr(result, "content", None):
+            try:
+                content = result.content[0].text
+                payload = json.loads(content)
+            except Exception:
+                payload = None
+            if isinstance(payload, dict) and payload.get("success") is False:
+                error_message = payload.get("error") or payload.get("message") or "Tool execution failed."
+                raise MCPToolInvocationError(str(error_message), result=result)
+
+        return result
 
     async def __aenter__(self) -> "MCPClient":
         await self.connect()
