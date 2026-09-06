@@ -258,6 +258,49 @@ The Task MCP server exposes these tools:
 
 - create_task
 - get_task
+
+## Phase 2.7.1 — FULL SYSTEM INTEGRATION TESTING
+
+Status: COMPLETE
+
+This phase verifies the complete MCP architecture as an integrated system rather than testing individual domain components in isolation. The implementation confirms the real end-to-end flow:
+
+MCP Client
+    ↓
+MCP stdio transport
+    ↓
+Unified MCP Server
+    ↓
+Task / Calendar / Notes tools
+    ↓
+Task / Calendar / Notes services
+    ↓
+SQLite database
+
+The verified integration coverage includes:
+
+- 17-tool unified discovery and registration
+- MCP Client → Unified MCP Server connection, initialization, discovery, and generic invocation
+- end-to-end Task CRUD and completion workflow
+- end-to-end Calendar create/list/update/delete workflow with conflict validation
+- end-to-end Notes create/list/update/search/delete workflow
+- cross-domain workflows across task, calendar, and note records in one MCP session
+- isolated database test fixtures to prevent production data changes
+- empty-data handling for fresh databases
+- persistence verification across repeated MCP calls
+
+Validation command:
+
+```powershell
+pytest -q
+```
+
+The current integration status is complete for Phase 2.7.1. The remaining phases are:
+
+- 2.7.2 — Security & Input Validation Audit
+- 2.7.3 — Reliability, Failure & Recovery Testing
+- 2.7.4 — Final Integration & Security Verification
+
 - list_tasks
 - update_task
 - complete_task
