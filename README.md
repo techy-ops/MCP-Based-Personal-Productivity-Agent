@@ -191,7 +191,7 @@ Verification includes:
 
 ### 2.5.2 MCP Client Tool Discovery — COMPLETE
 
-After `await client.connect()`, `await client.list_tools()` uses the MCP SDK's `ClientSession.list_tools()` operation over the already-active stdio session. It returns the SDK's native tool metadata objects, including each tool's name, description, and input schema.
+After `await client.connect()`, `await client.list_tools()` uses the MCP SDK's `ClientSession.list_tools()` operation over the already-active stdio session. It returns the SDK's native tool metadata objects, including each tool's `name`, `description`, and `inputSchema`.
 
 The Unified MCP Server currently exposes 17 dynamically discovered tools:
 

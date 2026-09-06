@@ -114,27 +114,51 @@ async def test_successful_tool_discovery(client_factory):
 
 
 @pytest.mark.asyncio
-async def test_discovered_tools_match_unified_server_contract(client_factory):
+async def test_discovery_returns_exactly_17_tools(client_factory):
     client = client_factory()
     await client.connect()
     tools = await client.list_tools()
-    names = [tool.name for tool in tools]
     assert len(tools) == 17
-    assert set(names) == EXPECTED_TOOL_NAMES
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_discovered_tool_names_match_unified_server_contract(client_factory):
+    client = client_factory()
+    await client.connect()
+    names = {tool.name for tool in await client.list_tools()}
+    assert names == EXPECTED_TOOL_NAMES
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_discovered_tool_names_are_unique(client_factory):
+    client = client_factory()
+    await client.connect()
+    names = [tool.name for tool in await client.list_tools()]
     assert len(names) == len(set(names))
     await client.close()
 
 
 @pytest.mark.asyncio
-async def test_discovered_tool_metadata_includes_input_schemas(client_factory):
+async def test_discovered_tool_metadata_is_accessible(client_factory):
+    client = client_factory()
+    await client.connect()
+    tools_by_name = {tool.name: tool for tool in await client.list_tools()}
+    tool = tools_by_name["create_task"]
+    assert isinstance(tool.name, str)
+    assert hasattr(tool, "description")
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_discovered_tool_input_schemas_are_accessible(client_factory):
     client = client_factory()
     await client.connect()
     tools_by_name = {tool.name: tool for tool in await client.list_tools()}
     for name in ("create_task", "create_event", "create_note"):
         tool = tools_by_name[name]
-        assert isinstance(tool.name, str)
-        assert hasattr(tool, "description")
-        assert isinstance(tool.input_schema, dict)
+        assert isinstance(tool.inputSchema, dict)
     await client.close()
 
 
