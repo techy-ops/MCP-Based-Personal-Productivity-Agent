@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -6,7 +7,12 @@ import pytest
 
 from app.config import BASE_DIR
 from mcp_client import MCPClient
-from mcp_client.exceptions import MCPClientStateError, MCPConnectionError, MCPToolDiscoveryError
+from mcp_client.exceptions import (
+    MCPClientStateError,
+    MCPConnectionError,
+    MCPToolDiscoveryError,
+    MCPToolInvocationError,
+)
 
 
 EXPECTED_TOOL_NAMES = {
@@ -204,3 +210,145 @@ async def test_tool_discovery_failure_raises_client_exception(client_factory):
         await client.list_tools()
     assert isinstance(error.value.__cause__, RuntimeError)
     await client.close()
+
+
+def _result_payload(result):
+    if getattr(result, "structuredContent", None) is not None:
+        return result.structuredContent
+    if getattr(result, "content", None):
+        first = result.content[0]
+        if hasattr(first, "text"):
+            return json.loads(first.text)
+    return result
+
+
+@pytest.mark.asyncio
+async def test_call_tool_requires_connection(client_factory):
+    with pytest.raises(MCPClientStateError, match="Connect to the MCP server"):
+        await client_factory().call_tool("create_task", {"title": "No connection"})
+
+
+@pytest.mark.asyncio
+async def test_call_tool_invokes_task_tool_via_mcp(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        result = await client.call_tool("create_task", {"title": "Client task", "priority": "high"})
+        payload = _result_payload(result)
+        assert result.isError is False
+        assert payload["success"] is True
+        assert payload["data"]["title"] == "Client task"
+        task_id = payload["data"]["id"]
+        retrieved = await client.call_tool("get_task", {"task_id": task_id})
+        assert _result_payload(retrieved)["data"]["id"] == task_id
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_invokes_calendar_tool_via_mcp(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        result = await client.call_tool(
+            "create_event",
+            {
+                "title": "Client event",
+                "start_time": "2026-09-20T09:00:00",
+                "end_time": "2026-09-20T10:00:00",
+                "location": "Workspace",
+            },
+        )
+        payload = _result_payload(result)
+        assert result.isError is False
+        assert payload["success"] is True
+        assert payload["data"]["title"] == "Client event"
+        event_id = payload["data"]["id"]
+        listed = await client.call_tool("list_events", {"start_date": "2026-09-20T00:00:00", "end_date": "2026-09-20T23:59:59"})
+        assert any(item["id"] == event_id for item in _result_payload(listed)["data"])
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_invokes_note_tool_via_mcp(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        result = await client.call_tool("create_note", {"title": "Client note", "content": "Created through generic client call."})
+        payload = _result_payload(result)
+        assert result.isError is False
+        assert payload["success"] is True
+        assert payload["data"]["title"] == "Client note"
+        note_id = payload["data"]["id"]
+        retrieved = await client.call_tool("get_note", {"note_id": note_id})
+        assert _result_payload(retrieved)["data"]["title"] == "Client note"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_supports_cross_domain_single_session_workflow(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        task_result = await client.call_tool("create_task", {"title": "Cross task", "priority": "medium"})
+        task_id = _result_payload(task_result)["data"]["id"]
+
+        event_result = await client.call_tool(
+            "create_event",
+            {
+                "title": "Cross event",
+                "start_time": "2026-09-21T08:00:00",
+                "end_time": "2026-09-21T09:00:00",
+            },
+        )
+        event_id = _result_payload(event_result)["data"]["id"]
+
+        note_result = await client.call_tool("create_note", {"title": "Cross note", "content": "Stored through a shared MCP session."})
+        note_id = _result_payload(note_result)["data"]["id"]
+
+        assert _result_payload(await client.call_tool("get_task", {"task_id": task_id}))["data"]["title"] == "Cross task"
+        assert _result_payload(await client.call_tool("get_event", {"event_id": event_id}))["data"]["title"] == "Cross event"
+        assert _result_payload(await client.call_tool("get_note", {"note_id": note_id}))["data"]["title"] == "Cross note"
+
+        await client.call_tool("delete_task", {"task_id": task_id})
+        await client.call_tool("delete_event", {"event_id": event_id})
+        await client.call_tool("delete_note", {"note_id": note_id})
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_unknown_tool_raises_client_exception(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        with pytest.raises(MCPToolInvocationError, match="not available|does not exist|unknown"):
+            await client.call_tool("nonexistent_tool", {})
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_invalid_arguments_propagate_server_errors(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        with pytest.raises(MCPToolInvocationError, match="title|empty"):
+            await client.call_tool("create_task", {"title": ""})
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_uses_discovered_tool_names_from_session(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        discovered = {tool.name for tool in await client.list_tools()}
+        assert "create_task" in discovered
+        result = await client.call_tool("create_task", {"title": "Discovery invoked task"})
+        assert result.isError is False
+    finally:
+        await client.close()
