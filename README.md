@@ -159,6 +159,49 @@ This verifies that:
 pytest
 ```
 
+## Phase 2.5 — MCP Client
+
+Phase 2.5.1 implements the MCP client foundation and lifecycle management for the existing Unified MCP Server.
+
+The purpose of this phase is intentionally narrow: the client establishes a real MCP protocol session over stdio and manages clean connect/disconnect behavior without introducing tool discovery, tool invocation, LangGraph, or LLM integrations.
+
+### 2.5.1 MCP Client Foundation & Lifecycle — COMPLETE
+
+The client follows the project’s real MCP protocol flow:
+
+MCP Client
+    ↓
+MCP Transport (stdio)
+    ↓
+Unified MCP Server
+    ↓
+Phase 1 services / database
+
+The reusable client is implemented in the `mcp_client` package and exposes an async `MCPClient` with `connect()` and `close()` lifecycle methods. It uses the installed `mcp` SDK’s `stdio_client` transport and `ClientSession.initialize()` handshake to validate a real session before marking the client as connected.
+
+Verification includes:
+
+- client creation and initial disconnected state
+- successful stdio connection to the Unified MCP Server
+- protocol session initialization
+- clean shutdown and repeated close safety
+- idempotent repeated connect behavior
+- invalid server path handling via client-level exceptions
+- async context manager support
+
+This phase intentionally does not implement:
+
+- tool discovery
+- `list_tools()` abstraction
+- tool invocation
+- `call_tool()` abstraction
+- dynamic tool routing
+- LangGraph, LLM, or frontend layers
+
+The next phase is:
+
+Phase 2.5.2 — Tool Discovery
+
 ## Example operations
 
 ```python

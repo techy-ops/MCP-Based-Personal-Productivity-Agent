@@ -33,8 +33,16 @@ class MCPClient:
         self.server_path = self.server_path.resolve()
         self.command = command or sys.executable
         self.args = list(args) if args is not None else [str(self.server_path)]
-        self.env = {**os.environ, **(env or {})}
         self.cwd = Path(cwd).resolve() if cwd is not None else BASE_DIR
+
+        base_env = {**os.environ, **(env or {})}
+        project_root = str(self.cwd)
+        pythonpath = base_env.get("PYTHONPATH")
+        if pythonpath:
+            base_env["PYTHONPATH"] = os.pathsep.join(filter(None, [project_root, pythonpath]))
+        else:
+            base_env["PYTHONPATH"] = project_root
+        self.env = base_env
 
         self.session: ClientSession | None = None
         self._transport_cm: Any | None = None
@@ -49,6 +57,9 @@ class MCPClient:
         if self.is_connected:
             return self
 
+        if self.session is not None or self._session_cm is not None or self._transport_cm is not None:
+            await self.close()
+
         transport_server = StdioServerParameters(
             command=self.command,
             args=self.args,
@@ -61,11 +72,10 @@ class MCPClient:
             read_stream, write_stream = await self._transport_cm.__aenter__()
             self._session_cm = ClientSession(read_stream, write_stream)
             await self._session_cm.__aenter__()
-
             self.session = self._session_cm
             await self.session.initialize()
             return self
-        except Exception as exc:  # pragma: no cover - exercised via test_connection_failure_raises_client_exception
+        except Exception as exc:
             await self.close()
             raise MCPConnectionError(f"Unable to connect to MCP server at {self.server_path}") from exc
 
