@@ -20,6 +20,10 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, future=True)
 
+# Import the ORM models so the metadata is populated before the schema is created.
+# This ensures the runtime database is initialized for the task, calendar, and note tables.
+from app.database import models  # noqa: F401,E402
+
 
 def create_database() -> None:
     """Create all database tables required by the application."""
