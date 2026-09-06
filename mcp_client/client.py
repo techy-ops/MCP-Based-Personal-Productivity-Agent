@@ -177,6 +177,12 @@ class MCPClient:
         if not self.is_connected or self.session is None:
             raise MCPClientStateError("Connect to the MCP server before invoking a tool.")
 
+        if not self._known_tool_names:
+            try:
+                await self.list_tools()
+            except MCPToolDiscoveryError:
+                pass
+
         if self._known_tool_names and name not in self._known_tool_names:
             raise MCPToolInvocationError(f"Tool '{name}' is not available on the connected MCP server.")
 
