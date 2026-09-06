@@ -161,9 +161,9 @@ pytest
 
 ## Phase 2.5 — MCP Client
 
-Phase 2.5.1 implements the MCP client foundation and lifecycle management for the existing Unified MCP Server.
+Phase 2.5.1 implements the MCP client foundation and lifecycle management for the existing Unified MCP Server. Phase 2.5.2 adds dynamic tool discovery through that same active MCP session.
 
-The purpose of this phase is intentionally narrow: the client establishes a real MCP protocol session over stdio and manages clean connect/disconnect behavior without introducing tool discovery, tool invocation, LangGraph, or LLM integrations.
+The client establishes a real MCP protocol session over stdio, manages clean connect/disconnect behavior, and can request the Unified MCP Server's tool metadata without importing server functions or maintaining a local tool registry.
 
 ### 2.5.1 MCP Client Foundation & Lifecycle — COMPLETE
 
@@ -189,18 +189,25 @@ Verification includes:
 - invalid server path handling via client-level exceptions
 - async context manager support
 
-This phase intentionally does not implement:
+### 2.5.2 MCP Client Tool Discovery — COMPLETE
 
-- tool discovery
-- `list_tools()` abstraction
+After `await client.connect()`, `await client.list_tools()` uses the MCP SDK's `ClientSession.list_tools()` operation over the already-active stdio session. It returns the SDK's native tool metadata objects, including each tool's name, description, and input schema.
+
+The Unified MCP Server currently exposes 17 dynamically discovered tools:
+
+- Task: `create_task`, `get_task`, `list_tasks`, `update_task`, `complete_task`, `delete_task`
+- Calendar: `create_event`, `get_event`, `list_events`, `update_event`, `delete_event`
+- Notes: `create_note`, `get_note`, `list_notes`, `update_note`, `delete_note`, `search_notes`
+
+Tool invocation is intentionally not implemented yet. The next phase is Phase 2.5.3 — Generic Tool Invocation & Error Handling.
+
+This phase intentionally does not implement:
 - tool invocation
 - `call_tool()` abstraction
 - dynamic tool routing
 - LangGraph, LLM, or frontend layers
 
-The next phase is:
-
-Phase 2.5.2 — Tool Discovery
+The next phase is Phase 2.5.3 — Generic Tool Invocation & Error Handling.
 
 ## Example operations
 
@@ -394,11 +401,14 @@ Phase 2.4 sub-phases:
       - 2.4.1 Unified Server Foundation — complete
       - 2.4.2 Calendar + Notes Integration — complete
       - 2.4.3 Final Integration + Verification — complete
-- Phase 2.5: MCP Client — upcoming
+- Phase 2.5: MCP Client
+  - 2.5.1 MCP Client Foundation & Lifecycle — complete
+  - 2.5.2 MCP Client Tool Discovery — complete
+  - 2.5.3 Generic Tool Invocation & Error Handling — next
 - Phase 3: LangGraph agent orchestration and AI workflows
 - Phase 4: Intelligence, security, and testing enhancements
 - Phase 5: Frontend integration and deployment
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, and Phase 2.4 are complete. Phase 2.5 MCP client work, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, Phase 2.4, and Phase 2.5.1–2.5.2 are complete. Tool invocation, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
