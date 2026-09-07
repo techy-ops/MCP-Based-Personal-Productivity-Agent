@@ -325,6 +325,29 @@ pytest -q
 
 Next: 2.7.3 — Reliability, Failure & Recovery Testing
 
+## Phase 2.7.3 — RELIABILITY, FAILURE & RECOVERY TESTING
+
+Status: COMPLETE
+
+This phase tested the existing MCP lifecycle under controlled connection, transport, server, tool, and database failures. Coverage included:
+
+- failed startup, partial session initialization, repeated connect, repeated close, and client state transitions
+- real MCP server termination, transport failure detection, cleanup, reconnect, fresh 17-tool discovery, and persisted-data recovery
+- expected tool failure followed by successful cross-domain operations in the same session
+- isolated SQLite commit failures, rollback behavior, update-state preservation, and no partial task persistence
+- subprocess and async session cleanup after normal and failed lifecycle paths
+- repeated sequential and cross-domain workflows already covered by the integration suite
+
+The reliability fix clears stale client session and transport state when an MCP invocation fails at the transport boundary, allowing deterministic reconnect. No new dependencies were required. Concurrent client use is not part of the current contract and was not forced into the architecture. This phase does not claim guaranteed recovery for every operating-system, process, or network failure mode.
+
+Validation command:
+
+```powershell
+pytest -q
+```
+
+Next: 2.7.4 — Final Integration & Security Verification
+
 - list_tasks
 - update_task
 - complete_task
