@@ -379,6 +379,65 @@ async def test_call_tool_invalid_arguments_propagate_server_errors(client_factor
 
 
 @pytest.mark.asyncio
+async def test_tool_failure_does_not_break_session(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        with pytest.raises(MCPToolInvocationError):
+            await client.call_tool("create_task", {"title": ""})
+
+        result = await client.call_tool("create_note", {"title": "Recovery", "content": "Session remains usable."})
+        assert _result_payload(result)["success"] is True
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_server_termination_cleans_state_and_supports_reconnect(client_factory):
+    client = client_factory()
+    await client.connect()
+    await client.list_tools()
+    process = client._transport_cm.gen.ag_frame.f_locals["process"]
+
+    process.kill()
+    await process.wait()
+
+    with pytest.raises(MCPToolInvocationError):
+        await client.call_tool("list_notes")
+
+    assert client.is_connected is False
+    assert client.session is None
+    assert process.returncode is not None
+
+    await client.connect()
+    try:
+        assert client.is_connected is True
+        assert {tool.name for tool in await client.list_tools()} == EXPECTED_TOOL_NAMES
+        result = await client.call_tool("list_notes")
+        assert _result_payload(result)["success"] is True
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_failed_connection_can_be_closed_and_retried(client_factory):
+    client = client_factory(server_path=BASE_DIR / "missing_server.py")
+    with pytest.raises(MCPConnectionError):
+        await client.connect()
+
+    assert client.is_connected is False
+    await client.close()
+
+    client.server_path = BASE_DIR / "mcp_servers" / "unified_server.py"
+    client.args = [str(client.server_path)]
+    await client.connect()
+    try:
+        assert client.is_connected is True
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_call_tool_uses_discovered_tool_names_from_session(client_factory):
     client = client_factory()
     await client.connect()
