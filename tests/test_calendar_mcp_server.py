@@ -84,6 +84,13 @@ async def test_get_event_tool_not_found(calendar_mcp_server):
 
 
 @pytest.mark.asyncio
+async def test_calendar_mcp_rejects_boolean_ids(calendar_mcp_server):
+    payload = await invoke_tool(calendar_mcp_server, "get_event", event_id=True)
+    assert payload["success"] is False
+    assert "event_id" in payload["error"].lower()
+
+
+@pytest.mark.asyncio
 async def test_create_event_invalid_input_handling(calendar_mcp_server):
     payload = await invoke_tool(
         calendar_mcp_server,

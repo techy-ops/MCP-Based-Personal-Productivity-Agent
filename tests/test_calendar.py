@@ -69,6 +69,17 @@ def test_invalid_time_range(calendar_db):
         create_event(title="Bad range", start_time=datetime(2026, 9, 10, 15, 0), end_time=datetime(2026, 9, 10, 14, 0))
 
 
+def test_update_cannot_create_invalid_time_range(calendar_db):
+    event = create_event(
+        title="Valid event",
+        start_time=datetime(2026, 9, 10, 9, 0),
+        end_time=datetime(2026, 9, 10, 10, 0),
+    )
+
+    with pytest.raises(ValidationError, match="end_time must be after start_time"):
+        update_event(event.id, end_time=datetime(2026, 9, 10, 8, 0))
+
+
 def test_calendar_conflict_detection(calendar_db):
     start = datetime(2026, 9, 10, 10, 0)
     end = datetime(2026, 9, 10, 11, 0)

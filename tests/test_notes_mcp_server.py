@@ -92,6 +92,13 @@ async def test_get_note_tool_invalid_id(notes_mcp_server):
 
 
 @pytest.mark.asyncio
+async def test_notes_mcp_rejects_boolean_ids(notes_mcp_server):
+    payload = await invoke_tool(notes_mcp_server, "get_note", note_id=True)
+    assert payload["success"] is False
+    assert "note_id" in payload["error"].lower()
+
+
+@pytest.mark.asyncio
 async def test_list_notes_tool_success(notes_mcp_server):
     await invoke_tool(notes_mcp_server, "create_note", title="First", content="Alpha")
     await invoke_tool(notes_mcp_server, "create_note", title="Second", content="Beta")

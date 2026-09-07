@@ -213,6 +213,42 @@ async def test_tool_discovery_failure_raises_client_exception(client_factory):
     await client.close()
 
 
+@pytest.mark.asyncio
+async def test_call_tool_fails_closed_when_tool_discovery_fails(client_factory):
+    client = client_factory()
+    await client.connect()
+    assert client.session is not None
+    client.session.list_tools = AsyncMock(side_effect=RuntimeError("protocol failure"))
+
+    with pytest.raises(MCPToolDiscoveryError):
+        await client.call_tool("create_task", {"title": "Should not be sent"})
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name", ["", "   ", None, "../create_task", "' OR '1'='1"])
+async def test_call_tool_rejects_malformed_tool_names(client_factory, tool_name):
+    client = client_factory()
+    await client.connect()
+    try:
+        with pytest.raises(MCPToolInvocationError):
+            await client.call_tool(tool_name, {})
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_call_tool_rejects_non_mapping_arguments(client_factory):
+    client = client_factory()
+    await client.connect()
+    try:
+        with pytest.raises(MCPToolInvocationError, match="dictionary"):
+            await client.call_tool("list_notes", [])
+    finally:
+        await client.close()
+
+
 def _result_payload(result):
     if getattr(result, "structuredContent", None) is not None:
         return result.structuredContent

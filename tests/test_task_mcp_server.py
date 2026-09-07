@@ -142,3 +142,23 @@ async def test_task_mcp_invalid_priority_handling(task_mcp_server):
     payload = await invoke_tool(task_mcp_server, "create_task", title="Bad priority", priority="urgent")
     assert payload["success"] is False
     assert "priority" in payload["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_task_mcp_rejects_boolean_ids(task_mcp_server):
+    payload = await invoke_tool(task_mcp_server, "get_task", task_id=True)
+    assert payload["success"] is False
+    assert "task_id" in payload["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_task_mcp_hides_unexpected_exception_details(task_mcp_server, monkeypatch):
+    def fail_create(**kwargs):
+        raise RuntimeError("database password should not be returned")
+
+    monkeypatch.setattr(task_service, "create_task", fail_create)
+    payload = await invoke_tool(task_mcp_server, "create_task", title="Valid task")
+
+    assert payload["success"] is False
+    assert "database password" not in payload["error"]
+    assert payload["error"] == "Unable to create task."

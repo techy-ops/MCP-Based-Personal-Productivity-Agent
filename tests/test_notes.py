@@ -72,6 +72,26 @@ def test_case_insensitive_search(note_db):
     assert any("Database normalization" == item.title for item in results)
 
 
+def test_search_treats_wildcards_as_literal_text(note_db):
+    create_note(title="100% complete", content="Release checklist")
+    create_note(title="Unrelated", content="No wildcard")
+
+    results = search_notes("%")
+
+    assert [item.title for item in results] == ["100% complete"]
+
+
+def test_sql_like_and_markup_text_is_stored_as_data(note_db):
+    title = "<script>alert('x')</script>"
+    content = "'; UNION SELECT password FROM users --"
+
+    note = create_note(title=title, content=content)
+
+    fetched = get_note(note.id)
+    assert fetched.title == title
+    assert fetched.content == content
+
+
 def test_missing_note(note_db):
     with pytest.raises(NotFoundError):
         get_note(999)
