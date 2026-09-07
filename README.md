@@ -297,9 +297,33 @@ pytest -q
 
 The current integration status is complete for Phase 2.7.1. The remaining phases are:
 
-- 2.7.2 — Security & Input Validation Audit
 - 2.7.3 — Reliability, Failure & Recovery Testing
 - 2.7.4 — Final Integration & Security Verification
+
+## Phase 2.7.2 — SECURITY & INPUT VALIDATION AUDIT
+
+Status: COMPLETE
+
+This phase performed a focused security and input-validation audit of the current MCP architecture. The audit covered:
+
+- MCP client tool-name, argument, discovery, and disconnected-state handling
+- Task, Calendar, and Notes malformed-input and boundary validation
+- invalid IDs, strict MCP argument types, calendar range integrity, and cross-domain isolation
+- SQL injection resistance using isolated SQLite databases and parameterized ORM queries
+- SQL-like, HTML-like, wildcard, Unicode, and other user text handling as data
+- controlled exception responses without exposing unexpected internal exception details
+- configuration, environment, dependency, command-execution, filesystem, and repository secret review
+- security regression tests using isolated in-memory or temporary databases
+
+The audit fixed the identified input-boundary, calendar-integrity, search-pattern, and error-leakage issues. It does not claim absolute security; authentication, authorization, rate limiting, deployment hardening, and broader recovery architecture remain outside this sub-phase.
+
+Validation command:
+
+```powershell
+pytest -q
+```
+
+Next: 2.7.3 — Reliability, Failure & Recovery Testing
 
 - list_tasks
 - update_task
