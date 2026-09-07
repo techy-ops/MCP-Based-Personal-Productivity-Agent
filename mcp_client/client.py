@@ -193,6 +193,7 @@ class MCPClient:
         try:
             result = await self.session.call_tool(name, payload)
         except Exception as exc:
+            await self.close()
             raise MCPToolInvocationError(f"MCP invocation failed for tool '{name}'.") from exc
 
         if getattr(result, "isError", False):
