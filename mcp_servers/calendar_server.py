@@ -12,7 +12,7 @@ server = FastMCP("calendar_server")
 
 
 def _validate_event_id(event_id: int) -> int:
-    if not isinstance(event_id, int) or event_id <= 0:
+    if isinstance(event_id, bool) or not isinstance(event_id, int) or event_id <= 0:
         raise ValidationError("event_id must be a positive integer.")
     return event_id
 
@@ -86,7 +86,7 @@ def create_event(
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to create calendar event: {exc}")
+        return _error_response("Unable to create calendar event.")
 
 
 @server.tool(
@@ -108,7 +108,7 @@ def get_event(event_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to retrieve calendar event: {exc}")
+        return _error_response("Unable to retrieve calendar event.")
 
 
 @server.tool(
@@ -131,7 +131,7 @@ def list_events(start_date: str | datetime | None = None, end_date: str | dateti
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to list calendar events: {exc}")
+        return _error_response("Unable to list calendar events.")
 
 
 @server.tool(
@@ -175,7 +175,7 @@ def update_event(
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to update calendar event: {exc}")
+        return _error_response("Unable to update calendar event.")
 
 
 @server.tool(
@@ -197,7 +197,7 @@ def delete_event(event_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to delete calendar event: {exc}")
+        return _error_response("Unable to delete calendar event.")
 
 
 if __name__ == "__main__":

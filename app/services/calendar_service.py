@@ -121,6 +121,8 @@ def update_event(event_id: int, **kwargs) -> CalendarEvent:
             start_time = payload["start_time"]
         if "end_time" in payload:
             end_time = payload["end_time"]
+        if end_time <= start_time:
+            raise ValidationError("end_time must be after start_time")
         if _has_conflict(session, start_time, end_time, exclude_id=event_id):
             raise ValueError("Calendar conflict: another event already exists during this time.")
         for field, value in payload.items():

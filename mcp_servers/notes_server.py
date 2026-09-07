@@ -11,7 +11,7 @@ server = FastMCP("notes_server")
 
 
 def _validate_note_id(note_id: int) -> int:
-    if not isinstance(note_id, int) or note_id <= 0:
+    if isinstance(note_id, bool) or not isinstance(note_id, int) or note_id <= 0:
         raise ValidationError("note_id must be a positive integer.")
     return note_id
 
@@ -55,7 +55,7 @@ def create_note(title: str, content: str) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to create note: {exc}")
+        return _error_response("Unable to create note.")
 
 
 @server.tool(
@@ -75,7 +75,7 @@ def get_note(note_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to retrieve note: {exc}")
+        return _error_response("Unable to retrieve note.")
 
 
 @server.tool(
@@ -90,7 +90,7 @@ def list_notes() -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to list notes: {exc}")
+        return _error_response("Unable to list notes.")
 
 
 @server.tool(
@@ -121,7 +121,7 @@ def update_note(
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to update note: {exc}")
+        return _error_response("Unable to update note.")
 
 
 @server.tool(
@@ -141,7 +141,7 @@ def delete_note(note_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to delete note: {exc}")
+        return _error_response("Unable to delete note.")
 
 
 @server.tool(
@@ -160,7 +160,7 @@ def search_notes(query: str) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to search notes: {exc}")
+        return _error_response("Unable to search notes.")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ server = FastMCP("task_server")
 
 
 def _validate_task_id(task_id: int) -> int:
-    if not isinstance(task_id, int) or task_id <= 0:
+    if isinstance(task_id, bool) or not isinstance(task_id, int) or task_id <= 0:
         raise ValidationError("task_id must be a positive integer.")
     return task_id
 
@@ -96,7 +96,7 @@ def create_task(
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to create task: {exc}")
+        return _error_response("Unable to create task.")
 
 
 @server.tool(
@@ -118,7 +118,7 @@ def get_task(task_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to retrieve task: {exc}")
+        return _error_response("Unable to retrieve task.")
 
 
 @server.tool(
@@ -138,7 +138,7 @@ def list_tasks(status: str | None = None, priority: str | None = None) -> dict[s
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to list tasks: {exc}")
+        return _error_response("Unable to list tasks.")
 
 
 @server.tool(
@@ -180,7 +180,7 @@ def update_task(
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to update task: {exc}")
+        return _error_response("Unable to update task.")
 
 
 @server.tool(
@@ -202,7 +202,7 @@ def complete_task(task_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to complete task: {exc}")
+        return _error_response("Unable to complete task.")
 
 
 @server.tool(
@@ -222,7 +222,7 @@ def delete_task(task_id: int) -> dict[str, Any]:
     except DatabaseError as exc:
         return _error_response(str(exc))
     except Exception as exc:  # pragma: no cover - safety fallback
-        return _error_response(f"Unable to delete task: {exc}")
+        return _error_response("Unable to delete task.")
 
 
 if __name__ == "__main__":

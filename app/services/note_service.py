@@ -108,11 +108,11 @@ def search_notes(query: str) -> list[Note]:
     """Search notes by title or content using case-insensitive SQL matching."""
     if query is None or not query.strip():
         raise ValidationError("search query cannot be empty.")
-    term = query.strip()
+    term = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     session = SessionLocal()
     try:
         stmt = select(Note).where(
-            or_(Note.title.ilike(f"%{term}%"), Note.content.ilike(f"%{term}%"))
+            or_(Note.title.ilike(f"%{term}%", escape="\\"), Note.content.ilike(f"%{term}%", escape="\\"))
         ).order_by(Note.updated_at.desc(), Note.created_at.desc())
         return list(session.execute(stmt).scalars().all())
     finally:
