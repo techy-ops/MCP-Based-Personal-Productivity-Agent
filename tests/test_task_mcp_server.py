@@ -146,9 +146,8 @@ async def test_task_mcp_invalid_priority_handling(task_mcp_server):
 
 @pytest.mark.asyncio
 async def test_task_mcp_rejects_boolean_ids(task_mcp_server):
-    payload = await invoke_tool(task_mcp_server, "get_task", task_id=True)
-    assert payload["success"] is False
-    assert "task_id" in payload["error"].lower()
+    with pytest.raises(Exception, match="valid integer"):
+        await invoke_tool(task_mcp_server, "get_task", task_id=True)
 
 
 @pytest.mark.asyncio
