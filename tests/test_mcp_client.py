@@ -421,7 +421,9 @@ async def test_server_termination_cleans_state_and_supports_reconnect(client_fac
 
 @pytest.mark.asyncio
 async def test_failed_connection_can_be_closed_and_retried(client_factory):
-    client = client_factory(server_path=BASE_DIR / "missing_server.py")
+    client = client_factory()
+    client.server_path = BASE_DIR / "missing_server.py"
+    client.args = [str(client.server_path)]
     with pytest.raises(MCPConnectionError):
         await client.connect()
 
