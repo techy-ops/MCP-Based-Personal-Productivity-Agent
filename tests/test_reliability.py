@@ -7,6 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from app.database import connection as db_connection
 from app.database.models import Base, Task
 import app.services.task_service as task_service
+import mcp_client.client as mcp_client_module
+from mcp_client import MCPClient
+from mcp_client.exceptions import MCPConnectionError
 from app.services.task_service import create_task, get_task
 from app.utils.validators import DatabaseError
 
@@ -63,3 +66,51 @@ def test_failed_update_preserves_previous_state(reliability_db, monkeypatch):
     monkeypatch.setattr(task_service, "SessionLocal", reliability_db)
     restored = get_task(task.id)
     assert restored.title == "Original title"
+
+
+@pytest.mark.asyncio
+async def test_partial_connection_failure_cleans_session_and_transport(monkeypatch):
+    class FakeTransport:
+        entered = False
+        exited = False
+
+        async def __aenter__(self):
+            self.entered = True
+            return object(), object()
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            self.exited = True
+
+    class FakeSession:
+        entered = False
+        exited = False
+
+        def __init__(self, read_stream, write_stream):
+            pass
+
+        async def __aenter__(self):
+            self.entered = True
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            self.exited = True
+
+        async def initialize(self):
+            raise RuntimeError("controlled initialization failure")
+
+    transport = FakeTransport()
+    session = FakeSession(None, None)
+    monkeypatch.setattr(mcp_client_module, "stdio_client", lambda parameters: transport)
+    monkeypatch.setattr(mcp_client_module, "ClientSession", lambda read, write: session)
+
+    client = MCPClient()
+    with pytest.raises(MCPConnectionError):
+        await client.connect()
+
+    assert transport.entered is True
+    assert transport.exited is True
+    assert session.entered is True
+    assert session.exited is True
+    assert client.is_connected is False
+    assert client.session is None
+    await client.close()

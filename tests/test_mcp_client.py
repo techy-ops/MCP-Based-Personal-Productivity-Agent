@@ -63,9 +63,11 @@ async def test_successful_connection(client_factory):
 async def test_successful_close(client_factory):
     client = client_factory()
     await client.connect()
+    process = client._transport_cm.gen.ag_frame.f_locals["process"]
     await client.close()
     assert client.is_connected is False
     assert client.session is None
+    assert process.returncode is not None
 
 
 @pytest.mark.asyncio
@@ -397,6 +399,8 @@ async def test_server_termination_cleans_state_and_supports_reconnect(client_fac
     client = client_factory()
     await client.connect()
     await client.list_tools()
+    created = await client.call_tool("create_task", {"title": "Survives server restart"})
+    task_id = _result_payload(created)["data"]["id"]
     process = client._transport_cm.gen.ag_frame.f_locals["process"]
 
     process.kill()
@@ -415,6 +419,8 @@ async def test_server_termination_cleans_state_and_supports_reconnect(client_fac
         assert {tool.name for tool in await client.list_tools()} == EXPECTED_TOOL_NAMES
         result = await client.call_tool("list_notes")
         assert _result_payload(result)["success"] is True
+        restored = await client.call_tool("get_task", {"task_id": task_id})
+        assert _result_payload(restored)["data"]["title"] == "Survives server restart"
     finally:
         await client.close()
 
