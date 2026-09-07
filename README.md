@@ -295,10 +295,7 @@ Validation command:
 pytest -q
 ```
 
-The current integration status is complete for Phase 2.7.1. The remaining phases are:
-
-- 2.7.3 — Reliability, Failure & Recovery Testing
-- 2.7.4 — Final Integration & Security Verification
+The current integration status is complete for Phase 2.7.1. Final Phase 2.7 verification is documented below.
 
 ## Phase 2.7.2 — SECURITY & INPUT VALIDATION AUDIT
 
@@ -347,6 +344,31 @@ pytest -q
 ```
 
 Next: 2.7.4 — Final Integration & Security Verification
+
+## Phase 2.7.4 — FINAL INTEGRATION & SECURITY VERIFICATION
+
+Status: COMPLETE
+
+This final verification confirmed the complete current MCP architecture through the real client and stdio transport using isolated temporary SQLite databases. The verification covered:
+
+- dynamic discovery of exactly 17 unique Unified MCP tools with descriptions and input schemas
+- successful invocation of every Task, Calendar, and Notes tool
+- complete Task, Calendar, and Notes workflows, including validation, conflicts, search, deletion, and missing-record behavior
+- cross-domain operations in one MCP session and persistence across close/reconnect
+- standalone Task, Calendar, Notes, and Unified server startup and expected tool counts of 6, 5, 6, and 17
+- final security regression coverage for IDs, boolean IDs, invalid input, SQL-like text, literal note wildcards, calendar update ranges, and safe errors
+- final reliability coverage for startup failure, partial initialization, server termination, reconnect, tool failure recovery, rollback, state consistency, and subprocess cleanup
+- repository secret/configuration review, dependency review, isolated test databases, and artifact hygiene
+
+The final live verification produced successful results for Task, Calendar, Notes, cross-domain operations, persistence/reconnect, and clean shutdown. No production database was used or modified. No new dependencies were added.
+
+Validation command:
+
+```powershell
+pytest -q
+```
+
+Phase 2.7 is fully verified. Next: 2.8 — Finalization & Benchmarking.
 
 - list_tasks
 - update_task
@@ -509,11 +531,15 @@ Phase 2.4 sub-phases:
 - Phase 2.5: MCP Client
   - 2.5.1 MCP Client Foundation & Lifecycle — complete
   - 2.5.2 MCP Client Tool Discovery — complete
-  - 2.5.3 Generic Tool Invocation & Error Handling — next
-- Phase 3: LangGraph agent orchestration and AI workflows
-- Phase 4: Intelligence, security, and testing enhancements
-- Phase 5: Frontend integration and deployment
+-  - 2.5.3 Generic Tool Invocation & Error Handling — complete
+- Phase 2.6: Dynamic Discovery & Invocation — absorbed into Phase 2.5
+- Phase 2.7:
+    - 2.7.1 Full System Integration Testing — complete
+    - 2.7.2 Security & Input Validation Audit — complete
+    - 2.7.3 Reliability, Failure & Recovery Testing — complete
+    - 2.7.4 Final Integration & Security Verification — complete
+- Phase 2.8: Finalization & Benchmarking — next
 
 ## Important note
 
-Phase 1, Phase 2.1, Phase 2.2, Phase 2.3, Phase 2.4, and Phase 2.5.1–2.5.2 are complete. Tool invocation, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
+Phase 1 through Phase 2.7.4 are complete. Phase 2.8 — Finalization & Benchmarking — is next. LangGraph, LLM integration, agent orchestration, AI features, and frontend interfaces remain future work. The backend is deliberately designed so those layers can be added later without rewriting the core services.
