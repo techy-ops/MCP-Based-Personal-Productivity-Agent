@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from fastmcp import FastMCP
+from pydantic import StrictInt
 
 from app.services import calendar_service
 from app.utils.validators import DatabaseError, NotFoundError, ValidationError
@@ -95,7 +96,7 @@ def create_event(
         "Retrieve a single calendar event by its event ID. Use this when you need the full details of an existing calendar record."
     ),
 )
-def get_event(event_id: int) -> dict[str, Any]:
+def get_event(event_id: StrictInt) -> dict[str, Any]:
     """Fetch a single calendar event using the Phase 1 service layer."""
     try:
         validated_id = _validate_event_id(event_id)
@@ -142,7 +143,7 @@ def list_events(start_date: str | datetime | None = None, end_date: str | dateti
     ),
 )
 def update_event(
-    event_id: int,
+    event_id: StrictInt,
     title: str | None = None,
     description: str | None = None,
     start_time: str | datetime | None = None,
@@ -184,7 +185,7 @@ def update_event(
         "Delete a calendar event permanently by its event ID. Use this when an appointment or meeting is no longer needed."
     ),
 )
-def delete_event(event_id: int) -> dict[str, Any]:
+def delete_event(event_id: StrictInt) -> dict[str, Any]:
     """Delete a calendar event through the Phase 1 service layer."""
     try:
         validated_id = _validate_event_id(event_id)

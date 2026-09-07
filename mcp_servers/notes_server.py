@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastmcp import FastMCP
+from pydantic import StrictInt
 
 from app.services import note_service
 from app.utils.validators import DatabaseError, NotFoundError, ValidationError
@@ -62,7 +63,7 @@ def create_note(title: str, content: str) -> dict[str, Any]:
     name="get_note",
     description="Retrieve a single note by its note ID when the full stored title and content are needed.",
 )
-def get_note(note_id: int) -> dict[str, Any]:
+def get_note(note_id: StrictInt) -> dict[str, Any]:
     """Fetch a single note using the Phase 1 note service layer."""
     try:
         validated_id = _validate_note_id(note_id)
@@ -100,7 +101,7 @@ def list_notes() -> dict[str, Any]:
     ),
 )
 def update_note(
-    note_id: int,
+    note_id: StrictInt,
     title: str | None = None,
     content: str | None = None,
 ) -> dict[str, Any]:
@@ -128,7 +129,7 @@ def update_note(
     name="delete_note",
     description="Delete an existing note permanently by its note ID.",
 )
-def delete_note(note_id: int) -> dict[str, Any]:
+def delete_note(note_id: StrictInt) -> dict[str, Any]:
     """Delete a note through the existing Phase 1 note service."""
     try:
         validated_id = _validate_note_id(note_id)

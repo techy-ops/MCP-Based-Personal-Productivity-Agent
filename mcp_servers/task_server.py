@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from fastmcp import FastMCP
+from pydantic import StrictInt
 
 from app.schemas.task import VALID_TASK_PRIORITIES, VALID_TASK_STATUSES
 from app.services import task_service
@@ -105,7 +106,7 @@ def create_task(
         "Retrieve a single task by ID. Use this when you need the full task details for a known task record."
     ),
 )
-def get_task(task_id: int) -> dict[str, Any]:
+def get_task(task_id: StrictInt) -> dict[str, Any]:
     """Fetch one task by ID using the Phase 1 service layer."""
     try:
         validated_id = _validate_task_id(task_id)
@@ -148,7 +149,7 @@ def list_tasks(status: str | None = None, priority: str | None = None) -> dict[s
     ),
 )
 def update_task(
-    task_id: int,
+    task_id: StrictInt,
     title: str | None = None,
     description: str | None = None,
     status: str | None = None,
@@ -189,7 +190,7 @@ def update_task(
         "Mark an existing task as completed. Use this once a task has been finished or delivered."
     ),
 )
-def complete_task(task_id: int) -> dict[str, Any]:
+def complete_task(task_id: StrictInt) -> dict[str, Any]:
     """Complete a task using the Phase 1 service function."""
     try:
         validated_id = _validate_task_id(task_id)
@@ -211,7 +212,7 @@ def complete_task(task_id: int) -> dict[str, Any]:
         "Delete a task permanently by ID. Use this when the task is no longer needed or should be removed from the backlog."
     ),
 )
-def delete_task(task_id: int) -> dict[str, Any]:
+def delete_task(task_id: StrictInt) -> dict[str, Any]:
     """Delete a task through the Phase 1 task service."""
     try:
         validated_id = _validate_task_id(task_id)
