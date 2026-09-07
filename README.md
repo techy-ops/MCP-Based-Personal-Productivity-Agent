@@ -531,7 +531,7 @@ Phase 2.4 sub-phases:
 - Phase 2.5: MCP Client
   - 2.5.1 MCP Client Foundation & Lifecycle — complete
   - 2.5.2 MCP Client Tool Discovery — complete
--  - 2.5.3 Generic Tool Invocation & Error Handling — complete
+    - 2.5.3 Generic Tool Invocation & Error Handling — complete
 - Phase 2.6: Dynamic Discovery & Invocation — absorbed into Phase 2.5
 - Phase 2.7:
     - 2.7.1 Full System Integration Testing — complete
