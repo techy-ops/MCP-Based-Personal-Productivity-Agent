@@ -217,7 +217,9 @@ def _format_table(rows: list[tuple[str, str, float, float]]) -> str:
         f"{' | '.join(['-' * len(header) for header in headers])}",
     ]
     for benchmark, direct_label, mcp_label, absolute, relative in rows:
-        formatted.append(f"{benchmark} | {direct_label} ms | {mcp_label} ms | {absolute:.2f} ms | {relative:.2f}%")
+        absolute_text = "n/a" if absolute is None else f"{absolute:.2f} ms"
+        relative_text = "n/a" if relative is None else f"{relative:.2f}%"
+        formatted.append(f"{benchmark} | {direct_label} | {mcp_label} | {absolute_text} | {relative_text}")
     return "\n".join(formatted)
 
 
@@ -287,12 +289,16 @@ async def main() -> None:
 
     output_path.write_text(json.dumps(benchmark_data, indent=2), encoding="utf-8")
 
+    task_overhead = benchmark_result(benchmark="create_task_overhead", direct_ms=direct_create_task['mean_ms'], mcp_ms=mcp_create_task['mean_ms'], iterations=20)
+    event_overhead = benchmark_result(benchmark="create_event_overhead", direct_ms=direct_create_event['mean_ms'], mcp_ms=mcp_create_event['mean_ms'], iterations=20)
+    note_overhead = benchmark_result(benchmark="create_note_overhead", direct_ms=direct_create_note['mean_ms'], mcp_ms=mcp_create_note['mean_ms'], iterations=20)
+
     comparison_rows = [
-        ("connection_initialization", f"{benchmark_data['benchmarks']['connection_initialization']['mean_ms']:.2f}", f"{benchmark_data['benchmarks']['connection_initialization']['mean_ms']:.2f}", 0.0, 0.0),
-        ("tool_discovery", "n/a", f"{benchmark_data['benchmarks']['tool_discovery']['mean_ms']:.2f}", 0.0, 0.0),
-        ("create_task", f"{direct_create_task['mean_ms']:.2f}", f"{mcp_create_task['mean_ms']:.2f}", benchmark_result(benchmark="create_task_overhead", direct_ms=direct_create_task['mean_ms'], mcp_ms=mcp_create_task['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_task_overhead", direct_ms=direct_create_task['mean_ms'], mcp_ms=mcp_create_task['mean_ms'], iterations=20)["relative_overhead_pct"]),
-        ("create_event", f"{direct_create_event['mean_ms']:.2f}", f"{mcp_create_event['mean_ms']:.2f}", benchmark_result(benchmark="create_event_overhead", direct_ms=direct_create_event['mean_ms'], mcp_ms=mcp_create_event['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_event_overhead", direct_ms=direct_create_event['mean_ms'], mcp_ms=mcp_create_event['mean_ms'], iterations=20)["relative_overhead_pct"]),
-        ("create_note", f"{direct_create_note['mean_ms']:.2f}", f"{mcp_create_note['mean_ms']:.2f}", benchmark_result(benchmark="create_note_overhead", direct_ms=direct_create_note['mean_ms'], mcp_ms=mcp_create_note['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_note_overhead", direct_ms=direct_create_note['mean_ms'], mcp_ms=mcp_create_note['mean_ms'], iterations=20)["relative_overhead_pct"]),
+        ("connection_initialization", "n/a", f"{benchmark_data['benchmarks']['connection_initialization']['mean_ms']:.2f} ms", None, None),
+        ("tool_discovery", "n/a", f"{benchmark_data['benchmarks']['tool_discovery']['mean_ms']:.2f} ms", None, None),
+        ("create_task", f"{direct_create_task['mean_ms']:.2f} ms", f"{mcp_create_task['mean_ms']:.2f} ms", task_overhead["absolute_overhead_ms"], task_overhead["relative_overhead_pct"]),
+        ("create_event", f"{direct_create_event['mean_ms']:.2f} ms", f"{mcp_create_event['mean_ms']:.2f} ms", event_overhead["absolute_overhead_ms"], event_overhead["relative_overhead_pct"]),
+        ("create_note", f"{direct_create_note['mean_ms']:.2f} ms", f"{mcp_create_note['mean_ms']:.2f} ms", note_overhead["absolute_overhead_ms"], note_overhead["relative_overhead_pct"]),
     ]
     print(_format_table(comparison_rows))
     print(json.dumps({"output": str(output_path), "summary": benchmark_data["benchmarks"]}, indent=2))

@@ -53,7 +53,7 @@ def calculate_overhead(direct_ms: float, mcp_ms: float) -> dict[str, float]:
     """Compute absolute and relative overhead between a direct baseline and the MCP path."""
     direct_value = float(direct_ms)
     mcp_value = float(mcp_ms)
-    absolute_ms = max(0.0, mcp_value - direct_value)
+    absolute_ms = mcp_value - direct_value
     if direct_value == 0:
         relative_pct = 0.0
     else:
