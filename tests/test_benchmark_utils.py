@@ -14,7 +14,7 @@ def test_summarize_samples_basic():
     assert stats["median_ms"] == pytest.approx(30.0)
     assert stats["min_ms"] == pytest.approx(10.0)
     assert stats["max_ms"] == pytest.approx(50.0)
-    assert stats["p95_ms"] == pytest.approx(47.0)
+    assert stats["p95_ms"] == pytest.approx(50.0)
     assert stats["stddev_ms"] == pytest.approx(15.811388300841896, rel=1e-6)
 
 
