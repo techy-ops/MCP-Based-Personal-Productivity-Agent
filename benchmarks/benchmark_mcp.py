@@ -84,8 +84,15 @@ async def _benchmark_mcp_call(operation_name: str, tool_name: str, payload: dict
     await client.list_tools()
 
     try:
-        for _ in range(warmup):
-            await client.call_tool(tool_name, payload)
+        for index in range(warmup):
+            warmup_payload = dict(payload)
+            if tool_name == "create_event":
+                warmup_payload = _unique_event_payload(index + 1000)
+            elif tool_name == "create_task":
+                warmup_payload["title"] = f"bench-task-{index + 1000}"
+            elif tool_name == "create_note":
+                warmup_payload["title"] = f"bench-note-{index + 1000}"
+            await client.call_tool(tool_name, warmup_payload)
         times: list[float] = []
         for index in range(iterations):
             call_payload = dict(payload)

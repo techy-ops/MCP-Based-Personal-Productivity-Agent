@@ -28,7 +28,7 @@ def summarize_samples(samples: Sequence[float]) -> BenchmarkStats:
     min_ms = min(sorted_values)
     max_ms = max(sorted_values)
     p95_ms = _percentile_nearest_rank(sorted_values, 95.0)
-    stddev_ms = statistics.pstdev(sorted_values) if len(sorted_values) > 1 else 0.0
+    stddev_ms = statistics.stdev(sorted_values) if len(sorted_values) > 1 else 0.0
     return {
         "count": len(sorted_values),
         "mean_ms": mean_ms,
