@@ -50,6 +50,11 @@ def patched_session_factory_for(db_path: Path) -> Iterator[None]:
         note_service.SessionLocal = original_note_session
 
 
+def _new_temp_db_env(prefix: str) -> dict[str, str]:
+    db_path = Path(tempfile.mkdtemp(prefix=prefix)) / "bench.db"
+    return {**os.environ, "DATABASE_URL": f"sqlite:///{db_path.as_posix()}"}
+
+
 def _benchmark_synchronous(operation_name: str, direct_fn: Callable[[], Any], *, iterations: int, warmup: int = 3) -> dict[str, Any]:
     times: list[float] = []
     for _ in range(warmup):
@@ -77,8 +82,7 @@ def _unique_event_payload(index: int) -> dict[str, Any]:
 
 
 async def _benchmark_mcp_call(operation_name: str, tool_name: str, payload: dict[str, Any], *, iterations: int, warmup: int = 3) -> dict[str, Any]:
-    db_path = Path(tempfile.mkdtemp(prefix="mcp_bench_")) / "bench.db"
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{db_path.as_posix()}"}
+    env = _new_temp_db_env("mcp_bench_")
     client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py", env=env)
     await client.connect()
     await client.list_tools()
@@ -151,7 +155,8 @@ async def _measure_discovery_latency(iterations: int, warmup: int = 3) -> dict[s
 async def _measure_session_reuse(iterations: int) -> dict[str, Any]:
     details: list[dict[str, Any]] = []
     for current in range(iterations):
-        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
+        env = _new_temp_db_env("mcp_session_")
+        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py", env=env)
         await client.connect()
         start = time.perf_counter()
         for index in range(5):
@@ -166,7 +171,8 @@ async def _measure_session_reuse(iterations: int) -> dict[str, Any]:
 async def _measure_reconnect(iterations: int) -> dict[str, Any]:
     times: list[float] = []
     for _ in range(iterations):
-        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
+        env = _new_temp_db_env("mcp_reconnect_")
+        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py", env=env)
         await client.connect(); await client.close()
         start = time.perf_counter(); await client.connect(); elapsed_ms = (time.perf_counter() - start) * 1000.0; times.append(elapsed_ms); await client.close()
     stats = summarize_samples(times)
@@ -176,7 +182,8 @@ async def _measure_reconnect(iterations: int) -> dict[str, Any]:
 async def _measure_cross_domain_workflow(iterations: int) -> dict[str, Any]:
     times: list[float] = []
     for index in range(iterations):
-        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
+        env = _new_temp_db_env("mcp_workflow_")
+        client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py", env=env)
         await client.connect()
         start = time.perf_counter()
         await client.call_tool("create_task", {"title": f"wf-task-{index}", "description": "workflow"})
