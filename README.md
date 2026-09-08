@@ -1,22 +1,23 @@
 # MCP-Based Personal Productivity Agent
 
-## Project description
+## Project status
 
-This project is a local backend foundation for a personal productivity system. It manages tasks, calendar events, and notes using a lightweight SQLAlchemy + SQLite architecture that is intentionally designed to be easy to wrap later with MCP tools.
+This repository is a complete Phase 2 MCP backend foundation for a personal productivity system. It includes the validated service layer, real MCP stdio transport integration, dynamic tool discovery, generic invocation, integration and security checks, and a reproducible benchmarking harness.
 
-## Phase 1 scope
+## Phase completion status
 
-Phase 1 focuses only on the backend foundation and database layer. It includes:
-
-- SQLAlchemy database models
-- SQLite configuration and session handling
-- Pydantic validation schemas
-- Service-layer business logic for tasks, events, and notes
-- Local CLI verification
-- Seed data script
-- Pytest-based test coverage
-
-MCP tools, LangGraph, AI features, frontend interfaces, external APIs, and cloud deployment are intentionally not implemented in this phase.
+- Phase 1 — COMPLETE
+- 2.1 — COMPLETE
+- 2.2 — COMPLETE
+- 2.3 — COMPLETE
+- 2.4 — COMPLETE
+- 2.5 — COMPLETE
+- 2.6 — ABSORBED INTO 2.5
+- 2.7.1 — COMPLETE
+- 2.7.2 — COMPLETE
+- 2.7.3 — COMPLETE
+- 2.7.4 — COMPLETE
+- 2.8 — COMPLETE
 
 ## Technology stack
 
@@ -24,26 +25,144 @@ MCP tools, LangGraph, AI features, frontend interfaces, external APIs, and cloud
 - SQLite
 - SQLAlchemy ORM
 - Pydantic
+- FastMCP
+- MCP SDK
 - pytest
 - python-dotenv
 
 ## Architecture
 
-The application follows a clean service-oriented flow:
+The verified architecture is:
 
-DATABASE
+MCP Client
     ↓
-MODELS
+MCP stdio transport
     ↓
-SCHEMAS
+Unified MCP Server
     ↓
-SERVICES
+Task / Calendar / Notes tools
     ↓
-CLI DEMO / FUTURE MCP TOOL WRAPPERS
+Service layer
+    ↓
+SQLite database
 
-The service layer is the key boundary for future Phase 2 MCP exposure.
+The service layer remains the source of business logic; the MCP layer is intentionally thin and exposes the same validated behavior through tool adapters.
 
-## Folder structure
+## Functional scope
+
+The project includes:
+
+- SQLAlchemy database models for tasks, calendar events, and notes
+- SQLite configuration and session handling
+- Pydantic validation schemas
+- service-layer business logic
+- MCP server adapters for all domains
+- unified MCP server with exactly 17 tools
+- dynamic tool discovery via the real MCP client
+- generic tool invocation over the active session
+- integration testing and reliability validation
+- benchmarking utilities for direct-vs-MCP comparisons
+
+## Unified MCP tool inventory
+
+The Unified MCP Server exposes exactly 17 tools:
+
+### Task tools
+- create_task
+- get_task
+- list_tasks
+- update_task
+- complete_task
+- delete_task
+
+### Calendar tools
+- create_event
+- get_event
+- list_events
+- update_event
+- delete_event
+
+### Notes tools
+- create_note
+- get_note
+- list_notes
+- update_note
+- delete_note
+- search_notes
+
+## Getting started
+
+### 1. Create and activate a virtual environment
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 3. Run tests
+
+```powershell
+pytest -q
+```
+
+## Benchmarking
+
+The benchmark suite is intentionally small and reproducible. It compares direct service-layer access against the real MCP stdio path while using isolated SQLite databases and deterministic synthetic payloads.
+
+Run the benchmark with:
+
+```powershell
+python -m benchmarks.benchmark_mcp
+```
+
+Optional output override:
+
+```powershell
+$env:MCP_BENCHMARK_OUTPUT = "C:\temp\mcp_productivity_benchmark.json"
+python -m benchmarks.benchmark_mcp
+```
+
+The default output location is the system temp directory, and the script writes a JSON artifact containing measured latencies, summary statistics, and overhead deltas.
+
+## Benchmark interpretation
+
+The benchmark distinguishes:
+
+- connection initialization latency
+- dynamic discovery latency
+- representative task/calendar/note invocation latency
+- warm-session repeated operation behavior
+- reconnect costs
+- cross-domain workflow timing
+
+This is an experimental baseline for the architecture itself. It does not claim universal production performance and intentionally excludes LLM reasoning, planning, and frontend concerns.
+
+## Security and reliability
+
+The repository includes validation and reliability checks for:
+
+- invalid tool names
+- non-dictionary arguments
+- server connection issues
+- reconnect after closure
+- lifecycle cleanup
+- database isolation during tests
+- repeated operations under controlled conditions
+
+## Known limitations
+
+- The benchmark is limited to the current local SQLite-backed architecture.
+- The results are environment-dependent and should be interpreted as a reproducible baseline rather than a universal performance guarantee.
+- Concurrency benchmarking is intentionally outside the current Phase 2 MCP contract.
+- No LLM, LangGraph, frontend, or autonomous planning layer is implemented in this phase.
+
+## Repository structure
 
 ```text
 mcp-productivity-agent/
@@ -67,197 +186,46 @@ mcp-productivity-agent/
 │   └── utils/
 │       ├── __init__.py
 │       └── validators.py
+├── benchmarks/
+│   ├── __init__.py
+│   ├── benchmark_utils.py
+│   └── benchmark_mcp.py
+├── mcp_client/
+│   ├── __init__.py
+│   ├── client.py
+│   └── exceptions.py
+├── mcp_servers/
+│   ├── __init__.py
+│   ├── task_server.py
+│   ├── calendar_server.py
+│   ├── notes_server.py
+│   └── unified_server.py
 ├── tests/
 │   ├── __init__.py
+│   ├── test_benchmark_utils.py
 │   ├── test_tasks.py
 │   ├── test_calendar.py
-│   └── test_notes.py
+│   ├── test_notes.py
+│   ├── test_task_mcp_server.py
+│   ├── test_calendar_mcp_server.py
+│   ├── test_notes_mcp_server.py
+│   ├── test_unified_mcp_server.py
+│   ├── test_mcp_client.py
+│   └── test_reliability.py
 ├── data/
-│   └── .gitkeep
 ├── scripts/
 │   └── seed_database.py
-├── .env.example
 ├── .gitignore
 ├── requirements.txt
 ├── README.md
 ├── main.py
-└── data/productivity.db
+└── .env.example
 ```
 
-## Setup instructions
+## Final note
 
-### 1. Create and activate a virtual environment
+Phase 2 is finalized and ready for the next major development phase. The present repository does not implement LLM reasoning, agent planning, frontend UIs, or autonomous orchestration; it remains a verified backend and MCP foundation that is benchmarked and ready for those follow-on layers.
 
-Windows PowerShell:
-
-```powershell
-cd path\to\mcp-productivity-agent
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-Command Prompt:
-
-```cmd
-python -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-### 2. Install dependencies
-
-```powershell
-pip install -r requirements.txt
-```
-
-### 3. Configure environment variables
-
-Copy the example environment file:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-The default configuration is:
-
-```env
-DATABASE_URL=sqlite:///data/productivity.db
-APP_ENV=development
-```
-
-## Database initialization
-
-The database tables are created automatically when the application starts using the database connection module. The default SQLite file is stored in the data folder.
-
-## Seed data instructions
-
-To add realistic demo data:
-
-```powershell
-python scripts/seed_database.py
-```
-
-The script creates demo tasks, calendar events, and notes if the database is empty or not previously seeded.
-
-## How to run the CLI demo
-
-```powershell
-python main.py
-```
-
-This verifies that:
-
-- a task can be created
-- tasks can be listed
-- a calendar event can be created
-- events can be listed
-- a note can be created
-- notes can be searched
-
-## How to run tests
-
-```powershell
-pytest
-```
-
-## Phase 2.5 — MCP Client
-
-Phase 2.5.1 implements the MCP client foundation and lifecycle management for the existing Unified MCP Server. Phase 2.5.2 adds dynamic tool discovery through that same active MCP session.
-
-The client establishes a real MCP protocol session over stdio, manages clean connect/disconnect behavior, and can request the Unified MCP Server's tool metadata without importing server functions or maintaining a local tool registry.
-
-### 2.5.1 MCP Client Foundation & Lifecycle — COMPLETE
-
-The client follows the project’s real MCP protocol flow:
-
-MCP Client
-    ↓
-MCP Transport (stdio)
-    ↓
-Unified MCP Server
-    ↓
-Phase 1 services / database
-
-The reusable client is implemented in the `mcp_client` package and exposes an async `MCPClient` with `connect()` and `close()` lifecycle methods. It uses the installed `mcp` SDK’s `stdio_client` transport and `ClientSession.initialize()` handshake to validate a real session before marking the client as connected.
-
-Verification includes:
-
-- client creation and initial disconnected state
-- successful stdio connection to the Unified MCP Server
-- protocol session initialization
-- clean shutdown and repeated close safety
-- idempotent repeated connect behavior
-- invalid server path handling via client-level exceptions
-- async context manager support
-
-### 2.5.2 MCP Client Tool Discovery — COMPLETE
-
-After `await client.connect()`, `await client.list_tools()` uses the MCP SDK's `ClientSession.list_tools()` operation over the already-active stdio session. It returns the SDK's native tool metadata objects, including each tool's `name`, `description`, and `inputSchema`.
-
-The Unified MCP Server currently exposes 17 dynamically discovered tools:
-
-- Task: `create_task`, `get_task`, `list_tasks`, `update_task`, `complete_task`, `delete_task`
-- Calendar: `create_event`, `get_event`, `list_events`, `update_event`, `delete_event`
-- Notes: `create_note`, `get_note`, `list_notes`, `update_note`, `delete_note`, `search_notes`
-
-### 2.5.3 Generic Tool Invocation & Error Handling — COMPLETE
-
-The MCP client now implements a single generic async `call_tool(name, arguments)` pathway that reuses the active `ClientSession` and sends raw MCP protocol requests to the Unified MCP Server. The method validates the connection state, checks discovered tool names when available, passes argument dictionaries through without hard-coded domain routing, and preserves useful MCP result metadata while converting protocol or server-side failures into a client-level exception.
-
-This enables the same client method to invoke tools across all domains:
-
-```python
-await client.call_tool("create_task", {"title": "Finish assignment"})
-await client.call_tool("create_event", {"title": "Planning", "start_time": "2026-09-20T09:00:00", "end_time": "2026-09-20T10:00:00"})
-await client.call_tool("create_note", {"title": "Research", "content": "Take notes from the call."})
-```
-
-The generic invocation path uses the installed MCP SDK `ClientSession.call_tool()` directly, not custom per-tool wrappers. The client preserves the real MCP `CallToolResult` object and raises `MCPToolInvocationError` for invalid tool names, invalid argument shapes, or server-side execution failures while leaving business validation in the tools and service layer.
-
-This phase continues to enforce database isolation for live integration tests and keeps tool discovery dynamic rather than hard-coded.
-
-This phase intentionally does not implement:
-- LangGraph
-- LLM or agent reasoning layers
-- Streamlit frontend
-- autonomous planning or memory
-- new business logic or database redesign
-
-The next phase is Phase 2.5.4 — Client Integration & Final Verification.
-
-## Example operations
-
-```python
-from app.services.task_service import create_task, list_tasks, complete_task
-from app.services.calendar_service import create_event
-from app.services.note_service import create_note, search_notes
-
-create_task(title="Prepare presentation", priority="high")
-list_tasks(status="pending")
-complete_task(1)
-
-create_event(title="Project meeting", start_time=some_datetime, end_time=another_datetime)
-create_note(title="Python notes", content="Type hints and service-based design help readability.")
-search_notes("python")
-```
-
-## MCP Integration
-
-Phase 2.1 introduces a lightweight MCP layer for the Task domain. The purpose of this layer is to expose the existing task management functionality as standardized MCP tools without duplicating business logic or bypassing the Phase 1 service layer.
-
-The architecture remains intentionally thin:
-
-MCP Tool
-    ↓
-Task Service
-    ↓
-Database
-
-This allows a future AI agent or MCP client to discover and call productivity tools in a structured way, while the business rules continue to live in the proven Phase 1 services.
-
-The Task MCP server exposes these tools:
-
-- create_task
-- get_task
 
 ## Phase 2.7.1 — FULL SYSTEM INTEGRATION TESTING
 
