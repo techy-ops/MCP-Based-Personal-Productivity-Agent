@@ -4,10 +4,11 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Iterator
+from typing import Any, Callable, Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -54,14 +55,25 @@ def _benchmark_synchronous(operation_name: str, direct_fn: Callable[[], Any], *,
     for _ in range(warmup):
         direct_fn()
     for _ in range(iterations):
-        start = __import__("time").perf_counter()
+        start = time.perf_counter()
         direct_fn()
-        elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
         times.append(elapsed_ms)
     stats = summarize_samples(times)
     result = benchmark_result(benchmark=operation_name, direct_ms=stats["mean_ms"], iterations=iterations, warmup=warmup, **stats)
     result["direct_ms"] = stats["mean_ms"]
     return result
+
+
+def _unique_event_payload(index: int) -> dict[str, Any]:
+    start = datetime(2026, 9, 10, 9, 0, tzinfo=timezone.utc) + timedelta(hours=index * 3)
+    end = start + timedelta(hours=1)
+    return {
+        "title": f"bench-event-{index}",
+        "description": "mcp benchmark",
+        "start_time": start.isoformat(),
+        "end_time": end.isoformat(),
+    }
 
 
 async def _benchmark_mcp_call(operation_name: str, tool_name: str, payload: dict[str, Any], *, iterations: int, warmup: int = 3) -> dict[str, Any]:
@@ -75,10 +87,17 @@ async def _benchmark_mcp_call(operation_name: str, tool_name: str, payload: dict
         for _ in range(warmup):
             await client.call_tool(tool_name, payload)
         times: list[float] = []
-        for _ in range(iterations):
-            start = __import__("time").perf_counter()
-            await client.call_tool(tool_name, payload)
-            elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+        for index in range(iterations):
+            call_payload = dict(payload)
+            if tool_name == "create_event":
+                call_payload = _unique_event_payload(index)
+            elif tool_name == "create_task":
+                call_payload["title"] = f"bench-task-{index}"
+            elif tool_name == "create_note":
+                call_payload["title"] = f"bench-note-{index}"
+            start = time.perf_counter()
+            await client.call_tool(tool_name, call_payload)
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
             times.append(elapsed_ms)
         stats = summarize_samples(times)
         result = benchmark_result(benchmark=operation_name, mcp_ms=stats["mean_ms"], iterations=iterations, warmup=warmup, **stats)
@@ -95,9 +114,9 @@ async def _measure_connect_latency(iterations: int, warmup: int = 3) -> dict[str
         await client.connect(); await client.close()
     for _ in range(iterations):
         client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
-        start = __import__("time").perf_counter()
+        start = time.perf_counter()
         await client.connect()
-        elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
         times.append(elapsed_ms)
         await client.close()
     stats = summarize_samples(times)
@@ -112,9 +131,9 @@ async def _measure_discovery_latency(iterations: int, warmup: int = 3) -> dict[s
         for _ in range(warmup):
             await client.list_tools()
         for _ in range(iterations):
-            start = __import__("time").perf_counter()
+            start = time.perf_counter()
             await client.list_tools()
-            elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
             times.append(elapsed_ms)
     finally:
         await client.close()
@@ -124,13 +143,13 @@ async def _measure_discovery_latency(iterations: int, warmup: int = 3) -> dict[s
 
 async def _measure_session_reuse(iterations: int) -> dict[str, Any]:
     details: list[dict[str, Any]] = []
-    for _ in range(iterations):
+    for current in range(iterations):
         client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
         await client.connect()
-        start = __import__("time").perf_counter()
+        start = time.perf_counter()
         for index in range(5):
-            await client.call_tool("create_task", {"title": f"session-task-{index}-{_}", "description": "reuse"})
-        elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+            await client.call_tool("create_task", {"title": f"session-task-{current}-{index}", "description": "reuse"})
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
         details.append({"duration_ms": elapsed_ms})
         await client.close()
     stats = summarize_samples([item["duration_ms"] for item in details])
@@ -142,7 +161,7 @@ async def _measure_reconnect(iterations: int) -> dict[str, Any]:
     for _ in range(iterations):
         client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
         await client.connect(); await client.close()
-        start = __import__("time").perf_counter(); await client.connect(); elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0; times.append(elapsed_ms); await client.close()
+        start = time.perf_counter(); await client.connect(); elapsed_ms = (time.perf_counter() - start) * 1000.0; times.append(elapsed_ms); await client.close()
     stats = summarize_samples(times)
     return {"benchmark": "reconnect", "iterations": iterations, **stats}
 
@@ -152,11 +171,11 @@ async def _measure_cross_domain_workflow(iterations: int) -> dict[str, Any]:
     for index in range(iterations):
         client = MCPClient(server_path=BASE_DIR / "mcp_servers" / "unified_server.py")
         await client.connect()
-        start = __import__("time").perf_counter()
+        start = time.perf_counter()
         await client.call_tool("create_task", {"title": f"wf-task-{index}", "description": "workflow"})
-        await client.call_tool("create_event", {"title": f"wf-event-{index}", "start_time": "2026-09-10T09:00:00", "end_time": "2026-09-10T10:00:00"})
+        await client.call_tool("create_event", _unique_event_payload(index))
         await client.call_tool("create_note", {"title": f"wf-note-{index}", "content": "workflow benchmark"})
-        elapsed_ms = (__import__("time").perf_counter() - start) * 1000.0
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
         times.append(elapsed_ms)
         await client.close()
     stats = summarize_samples(times)
@@ -173,7 +192,7 @@ def _direct_create_task() -> Any:
 def _direct_create_event() -> Any:
     db_path = Path(tempfile.mkdtemp(prefix="bench_direct_")) / "event.db"
     with patched_session_factory_for(db_path):
-        start = datetime.now(timezone.utc)
+        start = datetime.now(timezone.utc) + timedelta(hours=1)
         end = start + timedelta(hours=1)
         return calendar_service.create_event(title="benchmark-event", description="direct benchmark", start_time=start, end_time=end)
 
@@ -182,6 +201,17 @@ def _direct_create_note() -> Any:
     db_path = Path(tempfile.mkdtemp(prefix="bench_direct_")) / "note.db"
     with patched_session_factory_for(db_path):
         return note_service.create_note(title="benchmark-note", content="direct benchmark")
+
+
+def _format_table(rows: list[tuple[str, str, float, float]]) -> str:
+    headers = ("Benchmark", "Direct", "MCP", "Absolute Overhead", "Relative Overhead")
+    formatted = [
+        f"{' | '.join(headers)}",
+        f"{' | '.join(['-' * len(header) for header in headers])}",
+    ]
+    for benchmark, direct_label, mcp_label, absolute, relative in rows:
+        formatted.append(f"{benchmark} | {direct_label} ms | {mcp_label} ms | {absolute:.2f} ms | {relative:.2f}%")
+    return "\n".join(formatted)
 
 
 async def main() -> None:
@@ -219,7 +249,7 @@ async def main() -> None:
     }
 
     direct_create_event = _benchmark_synchronous("direct_create_event", _direct_create_event, iterations=20, warmup=3)
-    mcp_create_event = await _benchmark_mcp_call("mcp_create_event", "create_event", {"title": "bench-event", "start_time": "2026-09-10T09:00:00", "end_time": "2026-09-10T10:00:00"}, iterations=20, warmup=3)
+    mcp_create_event = await _benchmark_mcp_call("mcp_create_event", "create_event", _unique_event_payload(0), iterations=20, warmup=3)
     benchmark_data["benchmarks"]["create_event"] = {
         "direct": direct_create_event,
         "mcp": mcp_create_event,
@@ -249,6 +279,15 @@ async def main() -> None:
     benchmark_data["benchmarks"]["cross_domain_workflow"] = await _measure_cross_domain_workflow(10)
 
     output_path.write_text(json.dumps(benchmark_data, indent=2), encoding="utf-8")
+
+    comparison_rows = [
+        ("connection_initialization", f"{benchmark_data['benchmarks']['connection_initialization']['mean_ms']:.2f}", f"{benchmark_data['benchmarks']['connection_initialization']['mean_ms']:.2f}", 0.0, 0.0),
+        ("tool_discovery", "n/a", f"{benchmark_data['benchmarks']['tool_discovery']['mean_ms']:.2f}", 0.0, 0.0),
+        ("create_task", f"{direct_create_task['mean_ms']:.2f}", f"{mcp_create_task['mean_ms']:.2f}", benchmark_result(benchmark="create_task_overhead", direct_ms=direct_create_task['mean_ms'], mcp_ms=mcp_create_task['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_task_overhead", direct_ms=direct_create_task['mean_ms'], mcp_ms=mcp_create_task['mean_ms'], iterations=20)["relative_overhead_pct"]),
+        ("create_event", f"{direct_create_event['mean_ms']:.2f}", f"{mcp_create_event['mean_ms']:.2f}", benchmark_result(benchmark="create_event_overhead", direct_ms=direct_create_event['mean_ms'], mcp_ms=mcp_create_event['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_event_overhead", direct_ms=direct_create_event['mean_ms'], mcp_ms=mcp_create_event['mean_ms'], iterations=20)["relative_overhead_pct"]),
+        ("create_note", f"{direct_create_note['mean_ms']:.2f}", f"{mcp_create_note['mean_ms']:.2f}", benchmark_result(benchmark="create_note_overhead", direct_ms=direct_create_note['mean_ms'], mcp_ms=mcp_create_note['mean_ms'], iterations=20)["absolute_overhead_ms"], benchmark_result(benchmark="create_note_overhead", direct_ms=direct_create_note['mean_ms'], mcp_ms=mcp_create_note['mean_ms'], iterations=20)["relative_overhead_pct"]),
+    ]
+    print(_format_table(comparison_rows))
     print(json.dumps({"output": str(output_path), "summary": benchmark_data["benchmarks"]}, indent=2))
 
 
