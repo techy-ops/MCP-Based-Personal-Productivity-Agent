@@ -66,7 +66,7 @@ def _benchmark_synchronous(operation_name: str, direct_fn: Callable[[], Any], *,
 
 
 def _unique_event_payload(index: int) -> dict[str, Any]:
-    start = datetime(2026, 9, 10, 9, 0, tzinfo=timezone.utc) + timedelta(hours=index * 3)
+    start = datetime(2026, 9, 10, 9, 0, tzinfo=timezone.utc) + timedelta(days=index)
     end = start + timedelta(hours=1)
     return {
         "title": f"bench-event-{index}",
@@ -97,7 +97,7 @@ async def _benchmark_mcp_call(operation_name: str, tool_name: str, payload: dict
         for index in range(iterations):
             call_payload = dict(payload)
             if tool_name == "create_event":
-                call_payload = _unique_event_payload(index)
+                call_payload = _unique_event_payload(index + 10000)
             elif tool_name == "create_task":
                 call_payload["title"] = f"bench-task-{index}"
             elif tool_name == "create_note":
@@ -180,7 +180,7 @@ async def _measure_cross_domain_workflow(iterations: int) -> dict[str, Any]:
         await client.connect()
         start = time.perf_counter()
         await client.call_tool("create_task", {"title": f"wf-task-{index}", "description": "workflow"})
-        await client.call_tool("create_event", _unique_event_payload(index))
+        await client.call_tool("create_event", _unique_event_payload(index + 1000))
         await client.call_tool("create_note", {"title": f"wf-note-{index}", "content": "workflow benchmark"})
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         times.append(elapsed_ms)
