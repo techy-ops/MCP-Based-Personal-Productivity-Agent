@@ -2,82 +2,40 @@
 
 ## Project status
 
-This repository is a complete Phase 2 MCP backend foundation for a personal productivity system. It includes the validated service layer, real MCP stdio transport integration, dynamic tool discovery, generic invocation, integration and security checks, and a reproducible benchmarking harness.
+This repository contains a complete Phase 2 MCP backend foundation and the Phase 3.1 LLM integration foundation for a personal productivity system. It includes the validated service layer, real MCP stdio transport integration, dynamic tool discovery, generic invocation, integration and security checks, a reproducible benchmarking harness, and a provider-isolated LLM client.
 
 ## Phase completion status
 
 - Phase 1 — COMPLETE
-- 2.1 — COMPLETE
-- 2.2 — COMPLETE
-- 2.3 — COMPLETE
-- 2.4 — COMPLETE
-- 2.5 — COMPLETE
-- 2.6 — ABSORBED INTO 2.5
-- 2.7.1 — COMPLETE
-- 2.7.2 — COMPLETE
-- 2.7.3 — COMPLETE
-- 2.7.4 — COMPLETE
-- 2.8 — COMPLETE
+- Phase 2.1 — COMPLETE
+- Phase 2.2 — COMPLETE
+- Phase 2.3 — COMPLETE
+- Phase 2.4 — COMPLETE
+- Phase 2.5 — COMPLETE
+- Phase 2.6 — ABSORBED INTO 2.5
+- Phase 2.7.1 — COMPLETE
+- Phase 2.7.2 — COMPLETE
+- Phase 2.7.3 — COMPLETE
+- Phase 2.7.4 — COMPLETE
+- Phase 2.8 — COMPLETE
+- Phase 3.1 — COMPLETE
+- Phase 3.2 — NEXT
 
 ## Technology stack
 
- - OpenAI SDK (provider adapter for Phase 3.1)
+- Python 3.11+
+- SQLite
+- SQLAlchemy ORM
+- Pydantic
+- FastMCP
+- MCP SDK
+- pytest
+- python-dotenv
+- OpenAI SDK (provider adapter for Phase 3.1)
 
 ## Architecture
 
-The verified architecture is:
-## Phase 3.1 LLM foundation
-
-Phase 3.1 adds a small, provider-neutral LLM abstraction without connecting it to MCP, databases, tools, or agent orchestration.
-
-Current Phase 3.1 architecture:
-
-USER / FUTURE AGENT
-    |
-LLM abstraction (LLMClient)
-    |
-Provider adapter (OpenAIProvider)
-    |
-Configured LLM API
-
-The client returns a normalized response containing text, model information, and safe metadata. Credentials and model settings come from environment variables; deterministic tests inject a fake provider. No LangGraph graph, tool calling, planning, ReAct loop, or productivity-data pipeline is implemented yet.
-
-The MCP architecture remains independent:
-
-MCP Client
-    |
-Unified MCP Server
-    |
-17 tools
-    |
-Services
-    |
-Database
-
-These layers are intentionally kept separate until a future Phase 3.2 integration.
-
-### LLM configuration
-
-Copy the variable names from `.env.example` into a local `.env` and provide values through the environment. `.env` is ignored by Git. `LLM_MODEL` and `LLM_API_KEY` are required when constructing `LLMClient.from_env()`.
-
-## Phase status
-
-- Phase 1 - COMPLETE
-- Phase 2.1 - COMPLETE
-- Phase 2.2 - COMPLETE
-- Phase 2.3 - COMPLETE
-- Phase 2.4 - COMPLETE
-- Phase 2.5 - COMPLETE
-- Phase 2.6 - ABSORBED INTO 2.5
-- Phase 2.7.1 - COMPLETE
-- Phase 2.7.2 - COMPLETE
-- Phase 2.7.3 - COMPLETE
-- Phase 2.7.4 - COMPLETE
-- Phase 2.8 - COMPLETE
-- Phase 3.1 - COMPLETE
-- Phase 3.2 - NEXT
-
-Phase 3.1 is finalized as an LLM foundation. LangGraph, LLM reasoning, agent planning, MCP tool calling, frontend UIs, and autonomous orchestration remain future work.
+The verified MCP architecture is:
 
 MCP Client
     ↓
@@ -92,6 +50,28 @@ Service layer
 SQLite database
 
 The service layer remains the source of business logic; the MCP layer is intentionally thin and exposes the same validated behavior through tool adapters.
+
+## Phase 3.1 LLM foundation
+
+Phase 3.1 adds a small, provider-neutral LLM abstraction without connecting it to MCP, databases, tools, or agent orchestration.
+
+Current Phase 3.1 architecture:
+
+USER / FUTURE AGENT
+    ↓
+LLM abstraction (LLMClient)
+    ↓
+Provider adapter (OpenAIProvider)
+    ↓
+Configured LLM API
+
+The client returns a normalized response containing text, model information, and safe metadata. Credentials and model settings come from environment variables; deterministic tests inject a fake provider. No LangGraph graph, tool calling, planning, ReAct loop, or productivity-data pipeline is implemented yet.
+
+The MCP architecture remains independent. These layers are intentionally kept separate until a future Phase 3.2 integration.
+
+### LLM configuration
+
+Copy the variable names from `.env.example` into a local `.env` and provide values through the environment. `.env` is ignored by Git. `LLM_MODEL` and `LLM_API_KEY` are required when constructing `LLMClient.from_env()`.
 
 ## Functional scope
 
@@ -239,6 +219,11 @@ mcp-productivity-agent/
 │   ├── __init__.py
 │   ├── client.py
 │   └── exceptions.py
+├── llm/
+│   ├── __init__.py
+│   ├── client.py
+│   ├── config.py
+│   └── exceptions.py
 ├── mcp_servers/
 │   ├── __init__.py
 │   ├── task_server.py
@@ -269,7 +254,7 @@ mcp-productivity-agent/
 
 ## Final note
 
-Phase 2 is finalized and ready for the next major development phase. The present repository does not implement LLM reasoning, agent planning, frontend UIs, or autonomous orchestration; it remains a verified backend and MCP foundation that is benchmarked and ready for those follow-on layers.
+Phase 3.1 is finalized as an LLM foundation. The present repository does not implement LangGraph, LLM reasoning, agent planning, MCP tool calling, frontend UIs, or autonomous orchestration. Phase 3.2 is next.
 
 
 ## Phase 2.7.1 — FULL SYSTEM INTEGRATION TESTING
