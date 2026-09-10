@@ -456,3 +456,4 @@ async def test_call_tool_uses_discovered_tool_names_from_session(client_factory)
         assert result.isError is False
     finally:
         await client.close()
+
