@@ -47,7 +47,7 @@ def test_agent_graph_builds_and_compiles():
     assert agent.graph is not None
     assert "llm_node" in agent.graph.nodes
     assert "__start__" in agent.graph.nodes
-    assert hasattr(agent.graph.get_graph(), "ends")
+    assert any(edge.target == "__end__" for edge in agent.graph.get_graph().edges)
 
 
 def test_agent_invokes_llm_and_returns_final_response():
