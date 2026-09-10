@@ -27,8 +27,9 @@ class Agent:
             "llm_node",
             lambda state: llm_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt),
         )
+        workflow.add_node("__end__", lambda state: state)
         workflow.add_edge(START, "llm_node")
-        workflow.add_edge("llm_node", END)
+        workflow.add_edge("llm_node", "__end__")
         return workflow.compile()
 
     def invoke(self, user_message: str) -> AgentState:

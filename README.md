@@ -19,7 +19,8 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - Phase 2.7.4 — COMPLETE
 - Phase 2.8 — COMPLETE
 - Phase 3.1 — COMPLETE
-- Phase 3.2 — NEXT
+- Phase 3.2 — COMPLETE
+- Phase 3.3 — NEXT
 
 ## Technology stack
 
@@ -32,6 +33,7 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - pytest
 - python-dotenv
 - OpenAI SDK (provider adapter for Phase 3.1)
+- LangGraph (single-turn agent orchestration for Phase 3.2)
 
 ## Architecture
 
@@ -65,9 +67,29 @@ Provider adapter (OpenAIProvider)
     ↓
 Configured LLM API
 
-The client returns a normalized response containing text, model information, and safe metadata. Credentials and model settings come from environment variables; deterministic tests inject a fake provider. No LangGraph graph, tool calling, planning, ReAct loop, or productivity-data pipeline is implemented yet.
+The client returns a normalized response containing text, model information, and safe metadata. Credentials and model settings come from environment variables; deterministic tests inject a fake provider.
 
-The MCP architecture remains independent. These layers are intentionally kept separate until a future Phase 3.2 integration.
+## Phase 3.2 LangGraph agent foundation
+
+Phase 3.2 introduces the first LangGraph-based orchestration layer without connecting the graph to MCP tool execution. The graph remains intentionally simple: a user message enters a minimal in-memory state, the LLM node calls `LLMClient`, and the state is returned with the final assistant response.
+
+Current Phase 3.2 architecture:
+
+USER INPUT
+    ↓
+Agent API (`Agent.invoke`)
+    ↓
+LangGraph state workflow
+    ↓
+LLM node
+    ↓
+LLMClient
+    ↓
+OpenAI provider adapter
+
+The agent layer is intentionally separated from the MCP layer. It does not yet call tools, select tools, execute tasks, or persist conversation history.
+
+The MCP architecture remains independent and continues to expose the same 17 tools through the unified MCP server.
 
 ### LLM configuration
 
@@ -254,7 +276,7 @@ mcp-productivity-agent/
 
 ## Final note
 
-Phase 3.1 is finalized as an LLM foundation. The present repository does not implement LangGraph, LLM reasoning, agent planning, MCP tool calling, frontend UIs, or autonomous orchestration. Phase 3.2 is next.
+Phase 3.2 is finalized as the minimal LangGraph agent foundation. The repository does not yet implement MCP-aware tool selection, tool execution, autonomous planning, frontend UIs, or persistent memory. Phase 3.3 is next.
 
 
 ## Phase 2.7.1 — FULL SYSTEM INTEGRATION TESTING
