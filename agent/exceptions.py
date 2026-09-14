@@ -10,4 +10,16 @@ class AgentConfigurationError(AgentError):
 
 
 class AgentExecutionError(AgentError):
-    """Raised when the graph executes but the LLM step fails."""
+    """Raised when the graph executes but a node or workflow step fails."""
+
+
+class AgentToolDiscoveryError(AgentExecutionError):
+    """Raised when discovering tools from the MCP server fails."""
+
+
+class AgentToolValidationError(AgentExecutionError):
+    """Raised when a proposed tool call fails schema or argument validation."""
+
+
+class AgentToolInvocationError(AgentExecutionError):
+    """Raised when executing a tool call through MCP fails."""

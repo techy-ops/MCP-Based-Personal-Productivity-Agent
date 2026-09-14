@@ -1,0 +1,326 @@
+warning: in the working copy of 'agent/graph.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'agent/nodes.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex ad1e8af..ea66ea3 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -6,3 +6,4 @@[m [m__pycache__/[m
+ venv/[m
+ data/*.db[m
+ .vscode/[m
+[32m+[m[32mpowershell.exe[m
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 69f54f3..37ef3a3 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -20,7 +20,11 @@[m [mThis repository contains a complete Phase 2 MCP backend foundation and the Phase[m
+ - Phase 2.8 — COMPLETE[m
+ - Phase 3.1 — COMPLETE[m
+ - Phase 3.2 — COMPLETE[m
+[31m-- Phase 3.3 — NEXT[m
+[32m+[m[32m- Phase 3.3 — COMPLETE[m
+[32m+[m[32m- Phase 3.4 — NEXT[m
+[32m+[m[32m- Phase 3.5 — FUTURE[m
+[32m+[m[32m- Phase 3.6 — FUTURE[m
+[32m+[m[32m- Phase 3.7 — FUTURE[m
+ [m
+ ## Technology stack[m
+ [m
+[36m@@ -87,9 +91,56 @@[m [mLLMClient[m
+     ↓[m
+ OpenAI provider adapter[m
+ [m
+[31m-The agent layer is intentionally separated from the MCP layer. It does not yet call tools, select tools, execute tasks, or persist conversation history.[m
+[32m+[m[32mThe agent layer is intentionally separated from the MCP layer in Phase 3.2. It did not yet call tools, select tools, execute tasks, or persist conversation history.[m
+ [m
+[31m-The MCP architecture remains independent and continues to expose the same 17 tools through the unified MCP server.[m
+[32m+[m[32mThe MCP architecture remained independent and exposed the 17 tools through the unified MCP server.[m
+[32m+[m
+[32m+[m[32m## Phase 3.3 MCP-Aware Tool Selection & Invocation[m
+[32m+[m
+[32m+[m[32mPhase 3.3 connects the LangGraph agent foundation to the existing MCP Client, enabling dynamic tool discovery, LLM-based tool selection, deterministic validation, tool execution, structured result handling, and truthful response generation.[m
+[32m+[m
+[32m+[m[32m### Phase 3.3 Architecture & Flow[m
+[32m+[m
+[32m+[m[32m```[m
+[32m+[m[32mUSER[m
+[32m+[m[32m  ↓[m
+[32m+[m[32mAGENT API (invoke / ainvoke)[m
+[32m+[m[32m  ↓[m
+[32m+[m[32mDISCOVERY NODE (MCPClient.list_tools() -> discovered_tools)[m
+[32m+[m[32m  ↓[m
+[32m+[m[32mLLM NODE / SELECTION NODE (LLM decides tool proposal or direct response)[m
+[32m+[m[32m  ↓[m
+[32m+[m[32m[Tool Proposed?][m
+[32m+[m[32m  ├─ No ──────────────────────────────┐[m
+[32m+[m[32m  └─ Yes                              │[m
+[32m+[m[32m       ↓                              │[m
+[32m+[m[32mTOOL VALIDATION NODE (schema check)   │[m
+[32m+[m[32m  ├─ Invalid ─────────────────────────┤[m
+[32m+[m[32m  └─ Valid                            │[m
+[32m+[m[32m       ↓                              │[m
+[32m+[m[32mMCP INVOCATION NODE (MCPClient.call_tool)[m
+[32m+[m[32m       ↓                              │[m
+[32m+[m[32mFINAL RESPONSE NODE (LLM truth synthesis)[m
+[32m+[m[32m  ↓[m
+[32m+[m[32mAGENT STATE[m
+[32m+[m[32m  ↓[m
+[32m+[m[32mEND[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32m### Key Architectural Characteristics[m
+[32m+[m[32m1. **Reuse of Existing MCP Client**: The agent interfaces with the existing `MCPClient` using its standard session lifecycle, stdio transport, and `call_tool` mechanisms. No transport logic is duplicated.[m
+[32m+[m[32m2. **Dynamic Tool Discovery**: Tools are discovered at runtime from the connected MCP server. No hard-coded authoritative tool list exists in the agent.[m
+[32m+[m[32m3. **Deterministic Tool Validation**: Proposed tool calls are validated against discovered JSON schemas prior to execution (validating tool name, required fields, parameter types, and disallowing unsupported arguments). Invalid proposals fail closed and never touch MCP.[m
+[32m+[m[32m4. **Structured Result Handling**: The agent captures actual MCP tool results and classifies statuses (`success`, `not_found`, `validation_error`, `server_error`, `connection_error`).[m
+[32m+[m[32m5. **Truthful Final Response**: The final LLM response truthfully communicates the execution outcome, never hallucinates success upon failure, and omits internal secrets/traces.[m
+[32m+[m[32m6. **No Direct Database/Service Access**: All productivity operations strictly transit through Agent -> MCP Client -> MCP Server -> Service -> Database.[m
+[32m+[m[32m7. **Single Controlled Invocations**: Strictly limited to a single-turn tool selection and invocation loop; multi-step recursive ReAct behavior is deferred to Phase 3.5.[m
+[32m+[m
+[32m+[m[32m### Known Limitations[m
+[32m+[m[32m- Phase 3.4: Natural-language productivity operations remain for Phase 3.4.[m
+[32m+[m[32m- Phase 3.5: Multi-step task orchestration and recursive ReAct loops belong to Phase 3.5.[m
+[32m+[m[32m- Phase 3.6: Context and multi-turn conversation management belong to Phase 3.6.[m
+[32m+[m[32m- Phase 3.7: Advanced confirmation workflows and decision validation belong to Phase 3.7.[m
+ [m
+ ### LLM configuration[m
+ [m
+[1mdiff --git a/agent/__init__.py b/agent/__init__.py[m
+[1mindex ee7ad18..32a7428 100644[m
+[1m--- a/agent/__init__.py[m
+[1m+++ b/agent/__init__.py[m
+[36m@@ -1,4 +1,11 @@[m
+[31m-from .exceptions import AgentConfigurationError, AgentError, AgentExecutionError[m
+[32m+[m[32mfrom .exceptions import ([m
+[32m+[m[32m    AgentConfigurationError,[m
+[32m+[m[32m    AgentError,[m
+[32m+[m[32m    AgentExecutionError,[m
+[32m+[m[32m    AgentToolDiscoveryError,[m
+[32m+[m[32m    AgentToolInvocationError,[m
+[32m+[m[32m    AgentToolValidationError,[m
+[32m+[m[32m)[m
+ from .graph import Agent, build_agent[m
+ [m
+ __all__ = [[m
+[36m@@ -6,5 +13,8 @@[m [m__all__ = [[m
+     "AgentConfigurationError",[m
+     "AgentError",[m
+     "AgentExecutionError",[m
+[32m+[m[32m    "AgentToolDiscoveryError",[m
+[32m+[m[32m    "AgentToolInvocationError",[m
+[32m+[m[32m    "AgentToolValidationError",[m
+     "build_agent",[m
+ ][m
+[1mdiff --git a/agent/exceptions.py b/agent/exceptions.py[m
+[1mindex 4552d27..865f437 100644[m
+[1m--- a/agent/exceptions.py[m
+[1m+++ b/agent/exceptions.py[m
+[36m@@ -10,4 +10,16 @@[m [mclass AgentConfigurationError(AgentError):[m
+ [m
+ [m
+ class AgentExecutionError(AgentError):[m
+[31m-    """Raised when the graph executes but the LLM step fails."""[m
+[32m+[m[32m    """Raised when the graph executes but a node or workflow step fails."""[m
+[32m+[m
+[32m+[m
+[32m+[m[32mclass AgentToolDiscoveryError(AgentExecutionError):[m
+[32m+[m[32m    """Raised when discovering tools from the MCP server fails."""[m
+[32m+[m
+[32m+[m
+[32m+[m[32mclass AgentToolValidationError(AgentExecutionError):[m
+[32m+[m[32m    """Raised when a proposed tool call fails schema or argument validation."""[m
+[32m+[m
+[32m+[m
+[32m+[m[32mclass AgentToolInvocationError(AgentExecutionError):[m
+[32m+[m[32m    """Raised when executing a tool call through MCP fails."""[m
+[1mdiff --git a/agent/graph.py b/agent/graph.py[m
+[1mindex 79bb8a1..a913a75 100644[m
+[1m--- a/agent/graph.py[m
+[1m+++ b/agent/graph.py[m
+[36m@@ -1,43 +1,123 @@[m
+ from __future__ import annotations[m
+ [m
+[32m+[m[32mimport asyncio[m
+[32m+[m[32mimport concurrent.futures[m
+ from typing import Any[m
+ [m
+ from langgraph.graph import END, START, StateGraph[m
+ [m
+ from llm import LLMClient[m
+[32m+[m[32mfrom mcp_client import MCPClient[m
+ [m
+[31m-from .exceptions import AgentConfigurationError, AgentExecutionError[m
+[31m-from .nodes import DEFAULT_SYSTEM_PROMPT, llm_node[m
+[32m+[m[32mfrom .exceptions import AgentConfigurationError, AgentError, AgentExecutionError[m
+[32m+[m[32mfrom .nodes import ([m
+[32m+[m[32m    DEFAULT_SYSTEM_PROMPT,[m
+[32m+[m[32m    discovery_node,[m
+[32m+[m[32m    final_response_node,[m
+[32m+[m[32m    mcp_invocation_node,[m
+[32m+[m[32m    selection_node,[m
+[32m+[m[32m    validation_node,[m
+[32m+[m[32m)[m
+ from .state import AgentState, make_initial_state[m
+ [m
+ [m
+ class Agent:[m
+[31m-    """Minimal single-turn LangGraph-based productivity agent."""[m
+[32m+[m[32m    """MCP-aware single-turn LangGraph-based productivity agent."""[m
+ [m
+[31m-    def __init__(self, llm_client: LLMClient | None, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT) -> None:[m
+[32m+[m[32m    def __init__([m
+[32m+[m[32m        self,[m
+[32m+[m[32m        llm_client: LLMClient | None,[m
+[32m+[m[32m        mcp_client: MCPClient | None = None,[m
+[32m+[m[32m        *,[m
+[32m+[m[32m        system_prompt: str = DEFAULT_SYSTEM_PROMPT,[m
+[32m+[m[32m    ) -> None:[m
+         if llm_client is None:[m
+             raise AgentConfigurationError("LLM client is required to build the agent.")[m
+         self.llm_client = llm_client[m
+[32m+[m[32m        self.mcp_client = mcp_client[m
+         self.system_prompt = system_prompt[m
+         self.graph = self._build_graph()[m
+ [m
+     def _build_graph(self) -> Any:[m
+         workflow = StateGraph(AgentState)[m
+[31m-        workflow.add_node([m
+[32m+[m
+[32m+[m[32m        # 1. Discovery node[m
+[32m+[m[32m        async def _discovery_step(state: AgentState) -> AgentState:[m
+[32m+[m[32m            return await discovery_node(state, mcp_client=self.mcp_client)[m
+[32m+[m
+[32m+[m[32m        workflow.add_node("discovery_node", _discovery_step)[m
+[32m+[m
+[32m+[m[32m        # 2. LLM tool selection / decision node (named llm_node for Phase 3.2 compatibility)[m
+[32m+[m[32m        async def _llm_step(state: AgentState) -> AgentState:[m
+[32m+[m[32m            return selection_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt)[m
+[32m+[m
+[32m+[m[32m        workflow.add_node("llm_node", _llm_step)[m
+[32m+[m
+[32m+[m[32m        # 3. Tool validation node[m
+[32m+[m[32m        async def _validation_step(state: AgentState) -> AgentState:[m
+[32m+[m[32m            return validation_node(state)[m
+[32m+[m
+[32m+[m[32m        workflow.add_node("validation_node", _validation_step)[m
+[32m+[m
+[32m+[m[32m        # 4. MCP invocation node[m
+[32m+[m[32m        async def _invocation_step(state: AgentState) -> AgentState:[m
+[32m+[m[32m            return await mcp_invocation_node(state, mcp_client=self.mcp_client)[m
+[32m+[m
+[32m+[m[32m        workflow.add_node("mcp_invocation_node", _invocation_step)[m
+[32m+[m
+[32m+[m[32m        # 5. Final response synthesis node[m
+[32m+[m[32m        async def _final_response_step(state: AgentState) -> AgentState:[m
+[32m+[m[32m            return final_response_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt)[m
+[32m+[m
+[32m+[m[32m        workflow.add_node("final_response_node", _final_response_step)[m
+[32m+[m
+[32m+[m[32m        # Edges and conditional routing[m
+[32m+[m[32m        workflow.add_edge(START, "discovery_node")[m
+[32m+[m[32m        workflow.add_edge("discovery_node", "llm_node")[m
+[32m+[m
+[32m+[m[32m        def _route_after_selection(state: AgentState) -> str:[m
+[32m+[m[32m            if state.get("selected_tool"):[m
+[32m+[m[32m                return "validation_node"[m
+[32m+[m[32m            return "final_response_node"[m
+[32m+[m
+[32m+[m[32m        workflow.add_conditional_edges([m
+             "llm_node",[m
+[31m-            lambda state: llm_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt),[m
+[32m+[m[32m            _route_after_selection,[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "validation_node": "validation_node",[m
+[32m+[m[32m                "final_response_node": "final_response_node",[m
+[32m+[m[32m            },[m
+         )[m
+[31m-        workflow.add_edge(START, "llm_node")[m
+[31m-        workflow.add_edge("llm_node", END)[m
+[32m+[m
+[32m+[m[32m        def _route_after_validation(state: AgentState) -> str:[m
+[32m+[m[32m            if state.get("tool_status") == "validated":[m
+[32m+[m[32m                return "mcp_invocation_node"[m
+[32m+[m[32m            return "final_response_node"[m
+[32m+[m
+[32m+[m[32m        workflow.add_conditional_edges([m
+[32m+[m[32m            "validation_node",[m
+[32m+[m[32m            _route_after_validation,[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "mcp_invocation_node": "mcp_invocation_node",[m
+[32m+[m[32m                "final_response_node": "final_response_node",[m
+[32m+[m[32m            },[m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m        workflow.add_edge("mcp_invocation_node", "final_response_node")[m
+[32m+[m[32m        workflow.add_edge("final_response_node", END)[m
+[32m+[m
+         return workflow.compile()[m
+ [m
+[31m-    def invoke(self, user_message: str) -> AgentState:[m
+[32m+[m[32m    async def ainvoke(self, user_message: str) -> AgentState:[m
+[32m+[m[32m        """Asynchronously execute the single-turn MCP-aware agent workflow."""[m
+         if not isinstance(user_message, str) or not user_message.strip():[m
+             raise ValueError("User message must be a non-empty string.")[m
+ [m
+         initial_state = make_initial_state(user_message)[m
+         try:[m
+[31m-            result = self.graph.invoke(initial_state)[m
+[32m+[m[32m            result = await self.graph.ainvoke(initial_state)[m
+[32m+[m[32m        except AgentError:[m
+[32m+[m[32m            raise[m
+         except Exception as exc:[m
+             raise AgentExecutionError("The agent failed while generating a response.") from exc[m
+ [m
+[36m@@ -45,6 +125,40 @@[m [mclass Agent:[m
+             raise AgentExecutionError("The agent did not produce a final response.")[m
+         return result[m
+ [m
+[32m+[m[32m    def invoke(self, user_message: str) -> AgentState:[m
+[32m+[m[32m        """Synchronously execute the agent workflow with automatic event loop handling."""[m
+[32m+[m[32m        if not isinstance(user_message, str) or not user_message.strip():[m
+[32m+[m[32m            raise ValueError("User message must be a non-empty string.")[m
+[32m+[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            loop = asyncio.get_running_loop()[m
+[32m+[m[32m        except RuntimeError:[m
+[32m+[m[32m            loop = None[m
+[32m+[m
+[32m+[m[32m        if loop and loop.is_running():[m
+[32m+[m[32m            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:[m
+[32m+[m[32m                return executor.submit(asyncio.run, self.ainvoke(user_message)).result()[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            return asyncio.run(self.ainvoke(user_message))[m
+[32m+[m
+[32m+[m[32m    async def close(self) -> None:[m
+[32m+[m[32m        """Close associated MCP client connection if present."""[m
+[32m+[m[32m        if self.mcp_client is not None:[m
+[32m+[m[32m            await self.mcp_client.close()[m
+[32m+[m
+[32m+[m[32m    async def __aenter__(self) -> "Agent":[m
+[32m+[m[32m        if self.mcp_client is not None and not self.mcp_client.is_connected:[m
+[32m+[m[32m            await self.mcp_client.connect()[m
+[32m+[m[32m        return self[m
+[32m+[m
+[32m+[m[32m    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:[m
+[32m+[m[32m        await self.close()[m
+[32m+[m
+ [m
+[31m-def build_agent(llm_client: LLMClient | None, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT) -> Agent:[m
+[31m-    return Agent(llm_client, system_prompt=system_prompt)[m
+[32m+[m[32mdef build_agent([m
+[32m+[m[32m    llm_client: LLMClient | None,[m
+[32m+[m[32m    mcp_client: MCPClient | None = None,[m
+[32m+[m[32m    *,[m
+[32m+[m[32m    system_prompt: str = DEFAULT_SYSTEM_PROMPT,[m
+[32m+[m[32m) -> Agent:[m
+[32m+[m[32m    return Agent(llm_client, mcp_client=mcp_client, system_prompt=system_prompt)[m
+[1mdiff --git a/agent/nodes.py b/agent/nodes.py[m
+[1mindex e856f57..e434aa8 100644[m
+[1m--- a/agent/nodes.py[m
+[1m+++ b/agent/nodes.py[m
+[36m@@ -1,9 +1,27 @@[m
+ from __future__ import annotations[m
+ [m
+[32m+[m[32mimport json[m
+[32m+[m[32mimport re[m
+[32m+[m[32mfrom typ

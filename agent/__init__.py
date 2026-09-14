@@ -1,4 +1,11 @@
-from .exceptions import AgentConfigurationError, AgentError, AgentExecutionError
+from .exceptions import (
+    AgentConfigurationError,
+    AgentError,
+    AgentExecutionError,
+    AgentToolDiscoveryError,
+    AgentToolInvocationError,
+    AgentToolValidationError,
+)
 from .graph import Agent, build_agent
 
 __all__ = [
@@ -6,5 +13,8 @@ __all__ = [
     "AgentConfigurationError",
     "AgentError",
     "AgentExecutionError",
+    "AgentToolDiscoveryError",
+    "AgentToolInvocationError",
+    "AgentToolValidationError",
     "build_agent",
 ]

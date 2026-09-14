@@ -20,7 +20,11 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - Phase 2.8 — COMPLETE
 - Phase 3.1 — COMPLETE
 - Phase 3.2 — COMPLETE
-- Phase 3.3 — NEXT
+- Phase 3.3 — COMPLETE
+- Phase 3.4 — NEXT
+- Phase 3.5 — FUTURE
+- Phase 3.6 — FUTURE
+- Phase 3.7 — FUTURE
 
 ## Technology stack
 
@@ -87,9 +91,56 @@ LLMClient
     ↓
 OpenAI provider adapter
 
-The agent layer is intentionally separated from the MCP layer. It does not yet call tools, select tools, execute tasks, or persist conversation history.
+The agent layer is intentionally separated from the MCP layer in Phase 3.2. It did not yet call tools, select tools, execute tasks, or persist conversation history.
 
-The MCP architecture remains independent and continues to expose the same 17 tools through the unified MCP server.
+The MCP architecture remained independent and exposed the 17 tools through the unified MCP server.
+
+## Phase 3.3 MCP-Aware Tool Selection & Invocation
+
+Phase 3.3 connects the LangGraph agent foundation to the existing MCP Client, enabling dynamic tool discovery, LLM-based tool selection, deterministic validation, tool execution, structured result handling, and truthful response generation.
+
+### Phase 3.3 Architecture & Flow
+
+```
+USER
+  ↓
+AGENT API (invoke / ainvoke)
+  ↓
+DISCOVERY NODE (MCPClient.list_tools() -> discovered_tools)
+  ↓
+LLM NODE / SELECTION NODE (LLM decides tool proposal or direct response)
+  ↓
+[Tool Proposed?]
+  ├─ No ──────────────────────────────┐
+  └─ Yes                              │
+       ↓                              │
+TOOL VALIDATION NODE (schema check)   │
+  ├─ Invalid ─────────────────────────┤
+  └─ Valid                            │
+       ↓                              │
+MCP INVOCATION NODE (MCPClient.call_tool)
+       ↓                              │
+FINAL RESPONSE NODE (LLM truth synthesis)
+  ↓
+AGENT STATE
+  ↓
+END
+```
+
+### Key Architectural Characteristics
+1. **Reuse of Existing MCP Client**: The agent interfaces with the existing `MCPClient` using its standard session lifecycle, stdio transport, and `call_tool` mechanisms. No transport logic is duplicated.
+2. **Dynamic Tool Discovery**: Tools are discovered at runtime from the connected MCP server. No hard-coded authoritative tool list exists in the agent.
+3. **Deterministic Tool Validation**: Proposed tool calls are validated against discovered JSON schemas prior to execution (validating tool name, required fields, parameter types, and disallowing unsupported arguments). Invalid proposals fail closed and never touch MCP.
+4. **Structured Result Handling**: The agent captures actual MCP tool results and classifies statuses (`success`, `not_found`, `validation_error`, `server_error`, `connection_error`).
+5. **Truthful Final Response**: The final LLM response truthfully communicates the execution outcome, never hallucinates success upon failure, and omits internal secrets/traces.
+6. **No Direct Database/Service Access**: All productivity operations strictly transit through Agent -> MCP Client -> MCP Server -> Service -> Database.
+7. **Single Controlled Invocations**: Strictly limited to a single-turn tool selection and invocation loop; multi-step recursive ReAct behavior is deferred to Phase 3.5.
+
+### Known Limitations
+- Phase 3.4: Natural-language productivity operations remain for Phase 3.4.
+- Phase 3.5: Multi-step task orchestration and recursive ReAct loops belong to Phase 3.5.
+- Phase 3.6: Context and multi-turn conversation management belong to Phase 3.6.
+- Phase 3.7: Advanced confirmation workflows and decision validation belong to Phase 3.7.
 
 ### LLM configuration
 
