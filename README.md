@@ -137,10 +137,58 @@ END
 7. **Single Controlled Invocations**: Strictly limited to a single-turn tool selection and invocation loop; multi-step recursive ReAct behavior is deferred to Phase 3.5.
 
 ### Known Limitations
-- Phase 3.4: Natural-language productivity operations remain for Phase 3.4.
 - Phase 3.5: Multi-step task orchestration and recursive ReAct loops belong to Phase 3.5.
 - Phase 3.6: Context and multi-turn conversation management belong to Phase 3.6.
 - Phase 3.7: Advanced confirmation workflows and decision validation belong to Phase 3.7.
+
+## Phase 3.4 Natural Language Productivity Operations
+
+**Status: COMPLETE**
+
+### Purpose
+Allows users to perform normal productivity operations using natural-language requests rather than manually specifying tool names and raw JSON arguments.
+
+### Natural-Language Request Pipeline
+```
+Natural Language Request (`user_request: str`)
+        ↓
+LLM understands intent & extracts arguments
+        ↓
+Tool Proposal (`{"tool_name": "<name>", "arguments": {...}}`)
+        ↓
+Deterministic Tool Validation Layer
+        ↓
+MCP Invocation over stdio transport
+        ↓
+Structured Result Processing & Error Classification
+        ↓
+User-Friendly Natural Language Response
+```
+
+### Key Components
+1. **Natural Language Pipeline**: The agent takes `user_request: str` (with backwards compatibility for `user_message`), populating LangGraph state.
+2. **Dynamic Tool & Argument Extraction**: The LLM understands intent across all 17 MCP tools (Tasks, Calendar, Notes) without hardcoded registries, using dynamically discovered JSON schemas.
+3. **Reference Context & Relative Date/Time Handling**: Prompts incorporate the current reference date, time, and weekday to resolve relative expressions (`today`, `tomorrow`, `Friday`, `at 3 PM`) into standard ISO 8601 strings. Durations default to 1 hour when unspecified for calendar events. Missing or indeterminate dates for required fields prompt conversational clarifications rather than hallucinated data.
+4. **Deterministic Validation**: Proposed arguments are strictly checked against schemas before touching MCP: required parameters, argument types (supporting JSON schema unions / `anyOf`), positive integer IDs (`task_id`, `event_id`, `note_id`), valid ISO 8601 date-times, chronological bounds (`end_time > start_time`), and domain enums (`status`, `priority`).
+5. **Safe MCP Invocation & Error Classification**: Catches and translates MCP exceptions (`not_found`, `conflict_error`, `validation_error`, `server_error`, `connection_error`).
+6. **Response Generation**: Synthesizes concise, helpful confirmation and summary messages without exposing internal technical details, stack traces, system paths, or secrets.
+7. **Supported CRUD Operations**:
+   - **Tasks**: Create, retrieve, list (with status/priority filters), update, complete, and delete.
+   - **Calendar**: Create (with chronological & conflict checks), retrieve, list (by date range), update, and delete.
+   - **Notes**: Create, retrieve, list, update, delete, and search across titles and content.
+
+### Testing Status
+- 35 dedicated deterministic tests added in `tests/test_agent_natural_language.py`.
+- 100% test suite passing (218 tests total, 0 failures, 0 errors).
+- Tested mock LLM pipelines and live representative MCP execution with SQLite isolation.
+
+### Known Limitations
+- Multi-step recursive orchestration and cross-domain chain-of-thought belong to Phase 3.5.
+- Conversation history persistence and multi-turn dialog memory belong to Phase 3.6.
+- Human-in-the-loop confirmations belong to Phase 3.7.
+
+### Next Phase
+- **Phase 3.5**: Multi-Step Task Orchestration
 
 ### LLM configuration
 
