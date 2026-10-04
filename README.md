@@ -21,8 +21,8 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - Phase 3.1 — COMPLETE
 - Phase 3.2 — COMPLETE
 - Phase 3.3 — COMPLETE
-- Phase 3.4 — NEXT
-- Phase 3.5 — FUTURE
+- Phase 3.4 — COMPLETE
+- Phase 3.5 — NEXT
 - Phase 3.6 — FUTURE
 - Phase 3.7 — FUTURE
 
