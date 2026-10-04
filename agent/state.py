@@ -6,6 +6,7 @@ from typing import Any, TypedDict
 class AgentState(TypedDict):
     """Minimal in-memory state for the single-turn LangGraph workflow."""
 
+    user_request: str
     user_message: str
     messages: list[dict[str, Any]]
     final_response: str
@@ -18,11 +19,12 @@ class AgentState(TypedDict):
     tool_error: str | None
 
 
-def make_initial_state(user_message: str) -> AgentState:
-    clean_message = user_message.strip()
+def make_initial_state(user_request: str) -> AgentState:
+    clean_message = user_request.strip() if isinstance(user_request, str) else ""
     if not clean_message:
-        raise ValueError("User message must be a non-empty string.")
+        raise ValueError("User request must be a non-empty string.")
     return {
+        "user_request": clean_message,
         "user_message": clean_message,
         "messages": [{"role": "user", "content": clean_message}],
         "final_response": "",
