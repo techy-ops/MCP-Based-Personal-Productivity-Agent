@@ -108,12 +108,13 @@ class Agent:
 
         return workflow.compile()
 
-    async def ainvoke(self, user_message: str) -> AgentState:
+    async def ainvoke(self, user_request: str | None = None, *, user_message: str | None = None) -> AgentState:
         """Asynchronously execute the single-turn MCP-aware agent workflow."""
-        if not isinstance(user_message, str) or not user_message.strip():
-            raise ValueError("User message must be a non-empty string.")
+        request_text = user_request if user_request is not None else user_message
+        if not isinstance(request_text, str) or not request_text.strip():
+            raise ValueError("User request must be a non-empty string.")
 
-        initial_state = make_initial_state(user_message)
+        initial_state = make_initial_state(request_text)
         try:
             result = await self.graph.ainvoke(initial_state)
         except AgentError:
@@ -125,10 +126,11 @@ class Agent:
             raise AgentExecutionError("The agent did not produce a final response.")
         return result
 
-    def invoke(self, user_message: str) -> AgentState:
+    def invoke(self, user_request: str | None = None, *, user_message: str | None = None) -> AgentState:
         """Synchronously execute the agent workflow with automatic event loop handling."""
-        if not isinstance(user_message, str) or not user_message.strip():
-            raise ValueError("User message must be a non-empty string.")
+        request_text = user_request if user_request is not None else user_message
+        if not isinstance(request_text, str) or not request_text.strip():
+            raise ValueError("User request must be a non-empty string.")
 
         try:
             loop = asyncio.get_running_loop()
@@ -137,9 +139,9 @@ class Agent:
 
         if loop and loop.is_running():
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                return executor.submit(asyncio.run, self.ainvoke(user_message)).result()
+                return executor.submit(asyncio.run, self.ainvoke(request_text)).result()
         else:
-            return asyncio.run(self.ainvoke(user_message))
+            return asyncio.run(self.ainvoke(request_text))
 
     async def close(self) -> None:
         """Close associated MCP client connection if present."""
