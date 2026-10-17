@@ -15,6 +15,7 @@ from .nodes import (
     discovery_node,
     final_response_node,
     mcp_invocation_node,
+    orchestrator_node,
     selection_node,
     validation_node,
 )
@@ -22,7 +23,7 @@ from .state import AgentState, make_initial_state
 
 
 class Agent:
-    """MCP-aware single-turn LangGraph-based productivity agent."""
+    """MCP-aware multi-step LangGraph-based productivity agent."""
 
     def __init__(
         self,
@@ -30,12 +31,14 @@ class Agent:
         mcp_client: MCPClient | None = None,
         *,
         system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+        max_steps: int = 5,
     ) -> None:
         if llm_client is None:
             raise AgentConfigurationError("LLM client is required to build the agent.")
         self.llm_client = llm_client
         self.mcp_client = mcp_client
         self.system_prompt = system_prompt
+        self.max_steps = max_steps
         self.graph = self._build_graph()
 
     def _build_graph(self) -> Any:
@@ -65,7 +68,13 @@ class Agent:
 
         workflow.add_node("mcp_invocation_node", _invocation_step)
 
-        # 5. Final response synthesis node
+        # 5. Multi-step orchestrator node
+        async def _orchestration_step(state: AgentState) -> AgentState:
+            return orchestrator_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt)
+
+        workflow.add_node("orchestrator_node", _orchestration_step)
+
+        # 6. Final response synthesis node
         async def _final_response_step(state: AgentState) -> AgentState:
             return final_response_node(state, llm_client=self.llm_client, system_prompt=self.system_prompt)
 
@@ -103,17 +112,56 @@ class Agent:
             },
         )
 
-        workflow.add_edge("mcp_invocation_node", "final_response_node")
+        def _route_after_invocation(state: AgentState) -> str:
+            if state.get("tool_status") == "connection_error":
+                return "final_response_node"
+            return "orchestrator_node"
+
+        workflow.add_conditional_edges(
+            "mcp_invocation_node",
+            _route_after_invocation,
+            {
+                "orchestrator_node": "orchestrator_node",
+                "final_response_node": "final_response_node",
+            },
+        )
+
+        def _route_after_orchestration(state: AgentState) -> str:
+            if (
+                state.get("selected_tool")
+                and state.get("tool_status") == "proposed"
+                and state.get("step_count", 0) < state.get("max_steps", self.max_steps)
+            ):
+                return "validation_node"
+            return "final_response_node"
+
+        workflow.add_conditional_edges(
+            "orchestrator_node",
+            _route_after_orchestration,
+            {
+                "validation_node": "validation_node",
+                "final_response_node": "final_response_node",
+            },
+        )
+
         workflow.add_edge("final_response_node", END)
 
         return workflow.compile()
 
-    async def ainvoke(self, user_message: str) -> AgentState:
-        """Asynchronously execute the single-turn MCP-aware agent workflow."""
-        if not isinstance(user_message, str) or not user_message.strip():
-            raise ValueError("User message must be a non-empty string.")
+    async def ainvoke(
+        self,
+        user_request: str | None = None,
+        *,
+        user_message: str | None = None,
+        max_steps: int | None = None,
+    ) -> AgentState:
+        """Asynchronously execute the multi-step MCP-aware agent workflow."""
+        request_text = user_request if user_request is not None else user_message
+        if not isinstance(request_text, str) or not request_text.strip():
+            raise ValueError("User request must be a non-empty string.")
 
-        initial_state = make_initial_state(user_message)
+        effective_max_steps = max_steps if max_steps is not None else self.max_steps
+        initial_state = make_initial_state(request_text, max_steps=effective_max_steps)
         try:
             result = await self.graph.ainvoke(initial_state)
         except AgentError:
@@ -125,10 +173,17 @@ class Agent:
             raise AgentExecutionError("The agent did not produce a final response.")
         return result
 
-    def invoke(self, user_message: str) -> AgentState:
+    def invoke(
+        self,
+        user_request: str | None = None,
+        *,
+        user_message: str | None = None,
+        max_steps: int | None = None,
+    ) -> AgentState:
         """Synchronously execute the agent workflow with automatic event loop handling."""
-        if not isinstance(user_message, str) or not user_message.strip():
-            raise ValueError("User message must be a non-empty string.")
+        request_text = user_request if user_request is not None else user_message
+        if not isinstance(request_text, str) or not request_text.strip():
+            raise ValueError("User request must be a non-empty string.")
 
         try:
             loop = asyncio.get_running_loop()
@@ -137,9 +192,9 @@ class Agent:
 
         if loop and loop.is_running():
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                return executor.submit(asyncio.run, self.ainvoke(user_message)).result()
+                return executor.submit(asyncio.run, self.ainvoke(request_text, max_steps=max_steps)).result()
         else:
-            return asyncio.run(self.ainvoke(user_message))
+            return asyncio.run(self.ainvoke(request_text, max_steps=max_steps))
 
     async def close(self) -> None:
         """Close associated MCP client connection if present."""
@@ -160,5 +215,7 @@ def build_agent(
     mcp_client: MCPClient | None = None,
     *,
     system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    max_steps: int = 5,
 ) -> Agent:
-    return Agent(llm_client, mcp_client=mcp_client, system_prompt=system_prompt)
+    return Agent(llm_client, mcp_client=mcp_client, system_prompt=system_prompt, max_steps=max_steps)
+
