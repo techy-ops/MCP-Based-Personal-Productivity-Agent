@@ -22,8 +22,8 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - Phase 3.2 — COMPLETE
 - Phase 3.3 — COMPLETE
 - Phase 3.4 — COMPLETE
-- Phase 3.5 — NEXT
-- Phase 3.6 — FUTURE
+- Phase 3.5 — COMPLETE
+- Phase 3.6 — NEXT
 - Phase 3.7 — FUTURE
 
 ## Technology stack
@@ -183,12 +183,73 @@ User-Friendly Natural Language Response
 - Tested mock LLM pipelines and live representative MCP execution with SQLite isolation.
 
 ### Known Limitations
-- Multi-step recursive orchestration and cross-domain chain-of-thought belong to Phase 3.5.
 - Conversation history persistence and multi-turn dialog memory belong to Phase 3.6.
-- Human-in-the-loop confirmations belong to Phase 3.7.
+- Advanced confirmation workflows and human-in-the-loop decisions belong to Phase 3.7.
+
+## Phase 3.5 Multi-Step Task Orchestration
+
+**Status: COMPLETE**
+
+### Purpose
+Enables the productivity agent to autonomously orchestrate multi-step workflows, cross-domain operation chains, and iterative ReAct loops across Tasks, Calendar, and Notes tools without hardcoded sequences.
+
+### Multi-Step Orchestration Architecture & Workflow
+```
+USER REQUEST (`user_request: str`)
+     ↓
+DISCOVERY NODE (`MCPClient.list_tools()`)
+     ↓
+SELECTION NODE (`llm_node`: initial intent & tool proposal)
+     ├─ No Tool Needed (Direct response) ────────────────────────────────┐
+     ↓ (Tool Proposed)                                                   │
+TOOL VALIDATION NODE (schema, types, boundaries & constraints)           │
+     ├─ Invalid Proposal (Fail closed) ──────────────────────────────────┤
+     ↓ (Valid)                                                           │
+MCP INVOCATION NODE (stdio transport execution & result handling)         │
+     ├─ Connection Severed ──────────────────────────────────────────────┤
+     ↓ (Executed)                                                        │
+ORCHESTRATOR NODE (ReAct loop evaluation: observation & history)         │
+     ├─ Propose Next Tool (step_count < max_steps) ──────────────────────┤ (loops back to VALIDATION NODE)
+     └─ Complete / Max Steps Reached ────────────────────────────────────┤
+                                                                         ↓
+                                                             FINAL RESPONSE NODE (Truth synthesis)
+                                                                         ↓
+                                                                    AGENT STATE
+                                                                         ↓
+                                                                        END
+```
+
+### Key Components & Capabilities
+1. **Iterative ReAct Orchestration Loop**: The agent dynamically reasons about user intent, proposes tool calls, executes them over the unified MCP stdio transport, observes intermediate outputs, and chooses subsequent tools until the task is complete.
+2. **Cross-Domain Chaining**: Seamlessly chains dependent actions across all 17 MCP tools in Tasks, Calendar, and Notes. For example:
+   - Query notes (`search_notes`) → create actionable task (`create_task`) → schedule calendar review (`create_event`).
+   - Query pending tasks (`list_tasks`) → compile and persist summary note (`create_note`).
+   - Create task (`create_task`) → retrieve task details (`get_task`) → mark complete (`complete_task`).
+3. **Dynamic Observation Feedback & Argument Normalization**: Observations and structured outputs from earlier steps are fed back to the orchestrator LLM to extract IDs, dates, and content for subsequent tool arguments. Integer ID fields (`task_id`, `event_id`, `note_id`) are safely coerced from numeric strings before schema validation.
+4. **Strict Safety & Loop Bound Controls**:
+   - `max_steps`: Configurable execution limit (default: 5) prevents infinite loops.
+   - Per-invocation overrides supported via `agent.invoke(..., max_steps=N)` and `agent.ainvoke(..., max_steps=N)`.
+   - Halts further tool calls when `max_steps` is reached and marks `metadata["max_steps_reached"] = True`.
+   - Fails closed immediately on schema or validation errors, never executing unvalidated calls on MCP.
+   - Halts cleanly and reports connection errors if MCP transport drops mid-workflow.
+5. **State Trace & Step Integrity**:
+   - `state["steps"]` and `state["intermediate_steps"]`: List of structured records tracking each step (`step`, `tool_name`, `tool_arguments`, `tool_status`, `tool_result`, `tool_error`).
+   - `state["step_count"]`: Number of executed steps.
+   - Backward-compatible fields (`selected_tool`, `tool_status`, `tool_arguments`, `tool_result`, `tool_error`) reflect the latest executed tool.
+   - Complete state isolation between sequential agent invocations.
+6. **Truthful Multi-Step Synthesis**: The final response truthfully summarizes the outcomes of all executed operations. It never claims success for failed steps, explains validation or execution issues plainly, and never leaks system paths, stack traces, or credentials.
+
+### Testing Status
+- 14 dedicated deterministic and live integration tests added in `tests/test_agent_multistep.py`.
+- 100% test suite passing (232 tests total, 0 failures, 0 errors).
+- Validated multi-step task chaining, cross-domain workflows (Tasks ↔ Calendar ↔ Notes), `max_steps` bounds, string ID normalization, error recoveries (`not_found` fallback), and real SQLite/stdio MCP server lifecycle execution.
+
+### Known Limitations
+- Multi-turn conversational memory across separate invocations belongs to Phase 3.6.
+- Human-in-the-loop confirmations and sensitive decision validation belong to Phase 3.7.
 
 ### Next Phase
-- **Phase 3.5**: Multi-Step Task Orchestration
+- **Phase 3.6**: Context & Multi-Turn Conversation Management
 
 ### LLM configuration
 
