@@ -44,4 +44,3 @@ def make_initial_state(user_request: str, *, max_steps: int = 5) -> AgentState:
         "step_count": 0,
         "max_steps": max_steps,
     }
-
