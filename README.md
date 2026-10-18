@@ -240,9 +240,9 @@ ORCHESTRATOR NODE (ReAct loop evaluation: observation & history)         │
 6. **Truthful Multi-Step Synthesis**: The final response truthfully summarizes the outcomes of all executed operations. It never claims success for failed steps, explains validation or execution issues plainly, and never leaks system paths, stack traces, or credentials.
 
 ### Testing Status
-- 14 dedicated deterministic and live integration tests added in `tests/test_agent_multistep.py`.
-- 100% test suite passing (232 tests total, 0 failures, 0 errors).
-- Validated multi-step task chaining, cross-domain workflows (Tasks ↔ Calendar ↔ Notes), `max_steps` bounds, string ID normalization, error recoveries (`not_found` fallback), and real SQLite/stdio MCP server lifecycle execution.
+- 16 dedicated deterministic and live integration tests added in `tests/test_agent_multistep.py`.
+- 100% test suite passing (234 tests total, 0 failures, 0 errors).
+- Validated multi-step task chaining, cross-domain workflows (Tasks ↔ Calendar ↔ Notes), synchronous `invoke` wrapper, `max_steps` bounds, string ID normalization, error recoveries (`not_found` fallback), and real SQLite/stdio MCP server lifecycle execution.
 
 ### Known Limitations
 - Multi-turn conversational memory across separate invocations belongs to Phase 3.6.
