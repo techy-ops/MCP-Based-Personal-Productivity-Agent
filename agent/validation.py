@@ -5,6 +5,106 @@ from typing import Any
 
 VALID_TASK_STATUSES = {"pending", "in_progress", "completed"}
 VALID_TASK_PRIORITIES = {"low", "medium", "high"}
+DESTRUCTIVE_TOOLS = {"delete_task", "delete_event", "delete_note"}
+
+CONFIRMATION_KEYWORDS = {
+    "confirm",
+    "confirmed",
+    "yes",
+    "proceed",
+    "approve",
+    "approved",
+    "definitely",
+    "sure",
+}
+
+DENIAL_KEYWORDS = {
+    "no",
+    "cancel",
+    "stop",
+    "don't",
+    "dont",
+    "abort",
+    "nevermind",
+    "deny",
+    "denied",
+}
+
+
+def check_destructive_confirmation(
+    tool_name: str,
+    user_request: str,
+    *,
+    metadata: dict[str, Any] | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> tuple[bool, str, str | None]:
+    """Check whether a destructive operation has received explicit user confirmation.
+
+    Returns:
+        (is_allowed: bool, status: str, message: str | None)
+        status can be: "confirmed", "confirmation_required", "denied"
+    """
+    if tool_name not in DESTRUCTIVE_TOOLS:
+        return True, "not_destructive", None
+
+    meta = metadata or {}
+    args = arguments or {}
+
+    # Check argument or metadata explicit flags
+    if meta.get("confirmed") is True or args.get("confirmed") is True or args.get("confirm") is True:
+        return True, "confirmed", None
+
+    if meta.get("denied") is True or args.get("denied") is True:
+        return False, "denied", f"Operation '{tool_name}' was cancelled by the user."
+
+    # Parse user request text for confirmation / denial
+    req_lower = user_request.lower()
+    words = set(req_lower.split())
+
+    # Check denial first (fail-closed if conflicting)
+    denial_phrases = [
+        "do not delete",
+        "don't delete",
+        "cancel deletion",
+        "cancel delete",
+        "no, cancel",
+        "no don't",
+        "no, don't",
+        "abort",
+        "deny",
+        "denied",
+    ]
+    if (
+        any(phrase in req_lower for phrase in denial_phrases)
+        or req_lower.strip().rstrip("!.") in ("no", "cancel", "stop", "abort", "nevermind", "deny")
+        or req_lower.startswith("no,")
+        or req_lower.startswith("no ")
+    ):
+        return False, "denied", f"Operation '{tool_name}' was cancelled by the user."
+
+    # Check explicit confirmation phrases
+    confirmation_phrases = [
+        "yes, confirm",
+        "confirm delete",
+        "confirm deletion",
+        "confirm cancel",
+        "yes delete",
+        "yes, delete",
+        "please proceed",
+        "i confirm",
+        "proceed with",
+    ]
+    has_phrase = any(phrase in req_lower for phrase in confirmation_phrases)
+    has_keyword = any(k in words for k in ("confirm", "confirmed", "proceed"))
+
+    if has_phrase or has_keyword:
+        return True, "confirmed", None
+
+    return (
+        False,
+        "confirmation_required",
+        f"Explicit confirmation is required before executing destructive operation '{tool_name}'. Please confirm to proceed.",
+    )
 
 
 def validate_tool_call(
@@ -27,6 +127,10 @@ def validate_tool_call(
     """
     if not tool_name or not isinstance(tool_name, str) or not tool_name.strip():
         return False, "Tool name must be a non-empty string."
+
+    # Reject tool names with suspicious traversal, script, or injection characters
+    if any(ch in tool_name for ch in ("/", "\\", "<", ">", "{", "}", ";", "\n", "\r")):
+        return False, f"Invalid tool name format: '{tool_name}'."
 
     matching_tools = [t for t in discovered_tools if t.get("name") == tool_name]
     if not matching_tools:

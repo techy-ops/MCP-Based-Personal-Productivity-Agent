@@ -473,7 +473,7 @@ async def test_nl_task_crud_delete():
         LLMResponse("Task 12 has been successfully deleted.", "test-model"),
     ])
     agent = build_agent(llm_client, mcp_client=mcp)
-    result = await agent.ainvoke("Delete task 12.")
+    result = await agent.ainvoke("Delete task 12.", confirmed=True)
 
     assert result["selected_tool"] == "delete_task"
     assert result["tool_arguments"] == {"task_id": 12}
@@ -559,7 +559,7 @@ async def test_nl_calendar_crud_delete_event():
         LLMResponse("Event 8 has been cancelled and removed.", "test-model"),
     ])
     agent = build_agent(llm_client, mcp_client=mcp)
-    result = await agent.ainvoke("Cancel event 8.")
+    result = await agent.ainvoke("Cancel event 8.", confirmed=True)
 
     assert result["selected_tool"] == "delete_event"
     assert result["tool_arguments"] == {"event_id": 8}
@@ -619,7 +619,7 @@ async def test_nl_notes_delete():
         LLMResponse("Note 3 has been deleted.", "test-model"),
     ])
     agent = build_agent(llm_client, mcp_client=mcp)
-    result = await agent.ainvoke("Delete note 3.")
+    result = await agent.ainvoke("Delete note 3.", confirmed=True)
 
     assert result["selected_tool"] == "delete_note"
     assert result["tool_arguments"] == {"note_id": 3}
