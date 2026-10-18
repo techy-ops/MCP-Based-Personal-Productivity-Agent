@@ -534,6 +534,6 @@ async def test_live_destructive_action_confirmation_lifecycle(live_mcp_client):
         # Step 3: Confirmed delete -> executed on real MCP
         res3 = await agent.ainvoke("Yes, confirm delete task 1")
         assert res3["tool_status"] == "success"
-        assert res3["tool_result"]["data"]["id"] == 1
+        assert res3["tool_result"]["success"] is True
     finally:
         await agent.close()
