@@ -154,6 +154,8 @@ class Agent:
         *,
         user_message: str | None = None,
         max_steps: int | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
+        confirmed: bool = False,
     ) -> AgentState:
         """Asynchronously execute the multi-step MCP-aware agent workflow."""
         request_text = user_request if user_request is not None else user_message
@@ -161,7 +163,12 @@ class Agent:
             raise ValueError("User request must be a non-empty string.")
 
         effective_max_steps = max_steps if max_steps is not None else self.max_steps
-        initial_state = make_initial_state(request_text, max_steps=effective_max_steps)
+        initial_state = make_initial_state(
+            request_text,
+            max_steps=effective_max_steps,
+            conversation_history=conversation_history,
+            confirmed=confirmed,
+        )
         try:
             result = await self.graph.ainvoke(initial_state)
         except AgentError:
@@ -179,6 +186,8 @@ class Agent:
         *,
         user_message: str | None = None,
         max_steps: int | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
+        confirmed: bool = False,
     ) -> AgentState:
         """Synchronously execute the agent workflow with automatic event loop handling."""
         request_text = user_request if user_request is not None else user_message
@@ -192,9 +201,13 @@ class Agent:
 
         if loop and loop.is_running():
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                return executor.submit(asyncio.run, self.ainvoke(request_text, max_steps=max_steps)).result()
+                return executor.submit(asyncio.run, self.ainvoke(request_text, max_steps=max_steps, conversation_history=conversation_history, confirmed=confirmed)).result()
         else:
-            return asyncio.run(self.ainvoke(request_text, max_steps=max_steps))
+            return asyncio.run(self.ainvoke(request_text, max_steps=max_steps, conversation_history=conversation_history, confirmed=confirmed))
+
+    def create_session(self, *, max_history_turns: int = 10) -> "AgentSession":
+        """Create a multi-turn conversation session backed by this agent."""
+        return AgentSession(self, max_history_turns=max_history_turns)
 
     async def close(self) -> None:
         """Close associated MCP client connection if present."""
@@ -208,6 +221,63 @@ class Agent:
 
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
         await self.close()
+
+
+class AgentSession:
+    """Manages multi-turn conversation context across sequential agent invocations."""
+
+    def __init__(self, agent: Agent, *, max_history_turns: int = 10) -> None:
+        self.agent = agent
+        self.max_history_turns = max_history_turns
+        self.history: list[dict[str, Any]] = []
+
+    async def ainvoke(
+        self,
+        user_request: str | None = None,
+        *,
+        user_message: str | None = None,
+        max_steps: int | None = None,
+        confirmed: bool = False,
+    ) -> AgentState:
+        result = await self.agent.ainvoke(
+            user_request,
+            user_message=user_message,
+            max_steps=max_steps,
+            conversation_history=self.history,
+            confirmed=confirmed,
+        )
+        self._record_turn(result)
+        return result
+
+    def invoke(
+        self,
+        user_request: str | None = None,
+        *,
+        user_message: str | None = None,
+        max_steps: int | None = None,
+        confirmed: bool = False,
+    ) -> AgentState:
+        result = self.agent.invoke(
+            user_request,
+            user_message=user_message,
+            max_steps=max_steps,
+            conversation_history=self.history,
+            confirmed=confirmed,
+        )
+        self._record_turn(result)
+        return result
+
+    def _record_turn(self, result: AgentState) -> None:
+        req = result.get("user_request") or result.get("user_message", "")
+        resp = result.get("final_response", "")
+        self.history.append({"role": "user", "content": req})
+        if resp:
+            self.history.append({"role": "assistant", "content": resp})
+        if len(self.history) > self.max_history_turns * 2:
+            self.history = self.history[-(self.max_history_turns * 2):]
+
+    def clear(self) -> None:
+        self.history.clear()
 
 
 def build_agent(
