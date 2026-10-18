@@ -737,3 +737,53 @@ async def test_live_multistep_cross_domain_notes_and_tasks(live_mcp_client):
         assert result["steps"][2]["tool_result"]["data"]["title"] == "Implement Phase 3.5 multi-step"
     finally:
         await agent.close()
+
+
+def test_multistep_sync_invoke_wrapper():
+    """Verify synchronous agent.invoke wrapper supports multi-step execution."""
+    mcp = MockMultiStepMCPClient()
+    llm_client, _ = make_client([
+        LLMResponse(json.dumps({"tool_name": "create_task", "arguments": {"title": "Sync Task", "priority": "medium"}}), "test-model"),
+        LLMResponse(json.dumps({"tool_name": "complete_task", "arguments": {"task_id": 1}}), "test-model"),
+        LLMResponse("Synchronously created and completed task 1.", "test-model"),
+    ])
+    agent = build_agent(llm_client, mcp_client=mcp)
+    result = agent.invoke("Sync create and complete task.")
+
+    assert result["step_count"] == 2
+    assert len(result["steps"]) == 2
+    assert result["steps"][0]["tool_name"] == "create_task"
+    assert result["steps"][1]["tool_name"] == "complete_task"
+    assert "Synchronously created and completed task 1." in result["final_response"]
+
+
+@pytest.mark.asyncio
+async def test_live_multistep_tasks_and_calendar(live_mcp_client):
+    """Verify live cross-domain Tasks + Calendar multi-step workflow over real stdio MCP transport."""
+    provider = LiveSequenceFakeProvider([
+        LLMResponse(json.dumps({"tool_name": "create_task", "arguments": {"title": "Spec Review Task", "priority": "high"}}), "live-model"),
+        LLMResponse(json.dumps({
+            "tool_name": "create_event",
+            "arguments": {
+                "title": "Spec Review Session",
+                "start_time": "2026-10-20T14:00:00",
+                "end_time": "2026-10-20T15:00:00",
+            },
+        }), "live-model"),
+        LLMResponse("Created spec review task and scheduled calendar session for Oct 20.", "live-model"),
+    ])
+    config = LLMConfig(provider="openai", model="live-model", api_key="test-key", timeout=15.0)
+    llm_client = LLMClient(config, provider=provider)
+    agent = build_agent(llm_client, mcp_client=live_mcp_client)
+
+    try:
+        result = await agent.ainvoke("Create a high priority task Spec Review Task and schedule review meeting on Oct 20 at 2 PM.")
+        assert result["step_count"] == 2
+        assert len(result["steps"]) == 2
+        assert result["steps"][0]["tool_name"] == "create_task"
+        assert result["steps"][1]["tool_name"] == "create_event"
+        assert all(s["tool_status"] == "success" for s in result["steps"])
+        assert result["steps"][0]["tool_result"]["data"]["title"] == "Spec Review Task"
+        assert result["steps"][1]["tool_result"]["data"]["title"] == "Spec Review Session"
+    finally:
+        await agent.close()

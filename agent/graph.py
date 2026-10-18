@@ -218,4 +218,3 @@ def build_agent(
     max_steps: int = 5,
 ) -> Agent:
     return Agent(llm_client, mcp_client=mcp_client, system_prompt=system_prompt, max_steps=max_steps)
-
