@@ -14,6 +14,11 @@ from mcp_client.exceptions import (
     MCPToolInvocationError,
 )
 
+from .context import (
+    extract_context_entities,
+    format_context_for_prompt,
+    sanitize_untrusted_data,
+)
 from .exceptions import (
     AgentConfigurationError,
     AgentExecutionError,
@@ -22,7 +27,11 @@ from .exceptions import (
     AgentToolValidationError,
 )
 from .state import AgentState
-from .validation import validate_tool_call
+from .validation import (
+    DESTRUCTIVE_TOOLS,
+    check_destructive_confirmation,
+    validate_tool_call,
+)
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a helpful personal productivity assistant. Be concise, practical, and do not claim "
