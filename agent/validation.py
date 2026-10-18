@@ -62,7 +62,24 @@ def check_destructive_confirmation(
     words = set(req_lower.split())
 
     # Check denial first (fail-closed if conflicting)
-    if any(k in words for k in DENIAL_KEYWORDS) or "do not" in req_lower or "don't" in req_lower or "cancel" in req_lower:
+    denial_phrases = [
+        "do not delete",
+        "don't delete",
+        "cancel deletion",
+        "cancel delete",
+        "no, cancel",
+        "no don't",
+        "no, don't",
+        "abort",
+        "deny",
+        "denied",
+    ]
+    if (
+        any(phrase in req_lower for phrase in denial_phrases)
+        or req_lower.strip().rstrip("!.") in ("no", "cancel", "stop", "abort", "nevermind", "deny")
+        or req_lower.startswith("no,")
+        or req_lower.startswith("no ")
+    ):
         return False, "denied", f"Operation '{tool_name}' was cancelled by the user."
 
     # Check explicit confirmation phrases
@@ -70,6 +87,7 @@ def check_destructive_confirmation(
         "yes, confirm",
         "confirm delete",
         "confirm deletion",
+        "confirm cancel",
         "yes delete",
         "yes, delete",
         "please proceed",
