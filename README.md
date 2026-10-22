@@ -24,7 +24,8 @@ This repository contains a complete Phase 2 MCP backend foundation and the Phase
 - Phase 3.4 — COMPLETE
 - Phase 3.5 — COMPLETE
 - Phase 3.6 — COMPLETE
-- Phase 3.7 — NEXT
+- Phase 3.7 — (Future UX & Autonomous Scheduling)
+- Phase 3.8 — COMPLETE
 
 ## Technology stack
 
@@ -286,6 +287,52 @@ Provides robust context awareness across multi-turn conversations and multi-step
 
 ### Next Phase
 - **Phase 3.7**: Advanced User Experience & Autonomous Scheduling
+
+## Phase 3.8 Evaluation & Testing
+
+**Status: COMPLETE**
+
+### Purpose
+Provides comprehensive end-to-end evaluation, testing, and verification across the complete productivity system: LLM integration, LangGraph/ReAct workflows, multi-step orchestration, context management, safety guardrails, MCP discovery and invocation, all 17 tools across Tasks, Calendar, and Notes domains, failure handling, and truthfully synthesized responses.
+
+### Evaluation Coverage & Methodology
+1. **17 MCP Tools Verification Matrix**:
+   - Systematically exercised and validated every tool across all three domains:
+     - **Tasks (6 tools)**: `create_task`, `get_task`, `list_tasks`, `update_task`, `complete_task`, `delete_task`.
+     - **Calendar (5 tools)**: `create_event`, `get_event`, `list_events`, `update_event`, `delete_event`.
+     - **Notes (6 tools)**: `create_note`, `get_note`, `list_notes`, `update_note`, `delete_note`, `search_notes`.
+2. **Normal & Edge Cases**:
+   - Empty collection results (e.g., empty task or note lists) handled cleanly and reported truthfully without hallucinated records.
+   - Unicode, emoji, and special characters preserved intact throughout prompt, state, and MCP payloads.
+   - Flexible numeric string coercion for entity IDs (`task_id`, `event_id`, `note_id`).
+3. **Invalid Cases & Fail-Closed Validation**:
+   - Missing required fields, boolean/invalid IDs, inverted calendar bounds (`end_time <= start_time`), unsupported arguments, and malicious/path traversal tool names fail closed immediately before touching MCP.
+4. **Ambiguity & Missing Context**:
+   - When multiple candidates or missing context are encountered, the agent conversationally requests clarification rather than hallucinating IDs or details.
+   - Unambiguous single candidate entities in context resolve accurately to verified IDs.
+5. **Safety Guardrails & Injection Defense**:
+   - Destructive operations (`delete_task`, `delete_event`, `delete_note`) strictly require explicit user confirmation (`tool_status = "confirmation_required"`).
+   - User denial halts execution safely with `tool_status = "denied"`.
+   - Adversarial prompt injection payloads embedded in retrieved notes or search outputs are treated as passive text data and neutralized.
+6. **Execution Controls & Repeated-Call Prevention**:
+   - Infinite execution loops intercepted by detecting repeated identical calls (`tool_status = "repeated_call_prevented"`).
+   - Execution limits (`max_steps`) enforced strictly.
+   - State isolation guaranteed between consecutive agent invocations.
+7. **Failure Recovery & Truthful Outcome Reporting**:
+   - MCP exceptions (`not_found`, `conflict_error`, `connection_error`, `server_error`, `validation_error`) classified and reported accurately without claiming false success.
+   - LLM generation failures wrapped into clean `AgentExecutionError` without crashing unhandled.
+   - System paths, internal stack traces, and API credentials are kept masked.
+8. **Multi-Step Cross-Domain Orchestration**:
+   - Autonomous multi-step chaining across Notes ↔ Tasks ↔ Calendar (e.g. search notes → create task → schedule calendar event).
+9. **Multi-Turn Conversation Sessions**:
+   - `AgentSession` maintains conversational memory across turns while pruning older context safely.
+10. **Live End-to-End Integration**:
+   - Executed live against real Unified MCP server over stdio transport and isolated SQLite database.
+
+### Testing Status
+- 43 dedicated evaluation tests added in `tests/test_agent_system_evaluation.py`.
+- 100% test suite passing (293 tests total, 0 failures, 0 errors).
+- Validated all 17 tools, mock LLM pipelines, safety guardrails, and real stdio MCP execution with SQLite isolation.
 
 ### LLM configuration
 

@@ -415,7 +415,7 @@ async def mcp_invocation_node(state: AgentState, *, mcp_client: MCPClient | None
         msg = str(exc).lower()
         if "not found" in msg:
             status = "not_found"
-        elif "conflict" in msg:
+        elif "conflict" in msg or "overlap" in msg:
             status = "conflict_error"
         elif "validation" in msg or "invalid" in msg:
             status = "validation_error"
